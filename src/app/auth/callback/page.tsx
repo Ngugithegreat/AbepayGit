@@ -92,7 +92,7 @@ export default function AuthCallbackPage() {
     };
 
     processAuth();
-  }, []); // Empty deps - run once on mount
+  }, [login, router]); // Added login and router to dependencies
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center bg-slate-900">
