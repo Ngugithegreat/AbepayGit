@@ -22,9 +22,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { logout, isLinked, isLoading } = useAuth();
   const router = useRouter();
   
+  // This effect protects all routes that use this layout.
   useEffect(() => {
-    // This effect protects the authenticated routes.
-    // If the auth state is not loading and the user is not linked,
+    // If the authentication state is not loading and the user is not linked (logged in),
     // redirect them to the login page.
     if (!isLoading && !isLinked) {
       router.replace('/login');
@@ -37,7 +37,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   // While the auth state is loading, or if the user is not linked,
-  // show a loading screen. This prevents a flicker of the page content
+  // show a loading screen. This prevents a flicker of page content
   // before the redirect in the useEffect above can happen.
   if (isLoading || !isLinked) {
     return (
@@ -47,6 +47,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // If the user is authenticated, render the main application layout.
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
       <nav className="bg-slate-800 border-b border-slate-700 sticky top-0 z-20">

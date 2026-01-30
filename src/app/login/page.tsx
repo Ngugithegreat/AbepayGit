@@ -13,14 +13,14 @@ export default function LoginPage() {
   const { isLinked, isLoading } = useAuth();
   const [authUrl, setAuthUrl] = useState('');
 
-  // Redirect if already logged in
+  // This effect handles redirecting the user if they are already logged in.
   useEffect(() => {
     if (!isLoading && isLinked) {
       router.replace('/dashboard');
     }
   }, [isLoading, isLinked, router]);
 
-  // Handle errors shown on the login page
+  // Handle errors shown on the login page (e.g., from a failed callback)
   useEffect(() => {
     const error = searchParams.get('error');
     if (error) {
@@ -33,7 +33,7 @@ export default function LoginPage() {
     }
   }, [searchParams, toast]);
 
-  // Create the Deriv OAuth URL
+  // Construct the Deriv OAuth URL. This runs on the client-side.
   useEffect(() => {
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
     if (appId && typeof window !== 'undefined') {
@@ -47,6 +47,8 @@ export default function LoginPage() {
     }
   }, []);
 
+  // Show a loading spinner while the auth state is being determined.
+  // This prevents the login form from flashing on the screen for an already-logged-in user.
   if (isLoading || isLinked) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center bg-slate-900">
@@ -58,6 +60,7 @@ export default function LoginPage() {
     );
   }
 
+  // Render the login page if the user is not authenticated.
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-slate-900">
       <div className="w-full max-w-md glass-effect rounded-xl p-8 custom-shadow slide-in">

@@ -13,14 +13,19 @@ class DerivAPI {
 
   constructor({ app_id }: { app_id: number }) {
     this.app_id = app_id;
-    this.connect();
   }
 
   private connect() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.connection_promise = Promise.resolve();
+        return;
+    }
+    
     this.connection_promise = new Promise((resolve, reject) => {
         this.ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${this.app_id}`);
 
         this.ws.onopen = () => {
+            console.log("Deriv WebSocket connected.");
             resolve();
         };
 
@@ -39,26 +44,27 @@ class DerivAPI {
 
         this.ws.onclose = () => {
           console.log('Deriv WebSocket disconnected');
+          this.ws = null; // Clear instance on close
         };
 
         this.ws.onerror = (err) => {
           console.error('Deriv WebSocket error:', err);
+          this.ws = null;
           reject(err);
         };
-    })
+    });
   }
 
-  private async sendRequest(request: object): Promise<any> {
+  public async sendRequest(request: object): Promise<any> {
+    if (!this.connection_promise || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        console.log("No active connection, connecting...");
+        this.connect();
+    }
+    
     await this.connection_promise;
     
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        // In case of disconnection, try to reconnect.
-        this.connect();
-        await this.connection_promise;
-    }
-
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error("WebSocket is not connected.");
+      throw new Error("WebSocket connection failed.");
     }
       
     return new Promise((resolve) => {
@@ -116,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    console.log("Logging out and clearing session.");
     localStorage.removeItem('deriv_token');
     setToken(null);
     setUser(null);
@@ -124,14 +131,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyToken = useCallback(async (authToken: string): Promise<boolean> => {
     if (!api) {
+        console.error("API not initialized yet.");
         return false;
     }
     setIsLoading(true);
     
     try {
-        // Store token immediately. If verification fails, logout() will remove it.
-        localStorage.setItem('deriv_token', authToken);
-
+        console.log("Verifying token with Deriv...");
         const authorizeResponse = await api.authorize(authToken);
         const { authorize, error } = authorizeResponse;
 
@@ -146,10 +152,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const realAccount = fullUser.account_list.find((acc: DerivAccount) => acc.is_virtual === 0);
 
         if (realAccount) {
+            console.log("Verification successful. User:", fullUser.email);
+            // Store token in localStorage ONLY on successful verification
+            localStorage.setItem('deriv_token', authToken);
             setUser(fullUser);
             setSelectedAccount(realAccount);
             setToken(authToken);
-            // Token is already set in localStorage
             setIsLoading(false);
             return true;
         } else {
@@ -160,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
     } catch (e) {
-        console.error("An error occurred during token verification:", e);
+        console.error("An unexpected error occurred during token verification:", e);
         logout();
         setIsLoading(false);
         return false;
@@ -171,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedToken = localStorage.getItem('deriv_token');
     if (storedToken && api) {
+        console.log("Found stored token. Verifying session...");
         verifyToken(storedToken);
     } else {
       setIsLoading(false);
