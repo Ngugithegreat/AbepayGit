@@ -6,58 +6,72 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 
 function AuthCallback() {
-  const { login } = useAuth();
+  const { login, isLinked, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  const [authHandled, setAuthHandled] = useState(false);
 
   useEffect(() => {
+    // This effect handles the one-time processing of the auth token from the URL.
+    if (authHandled) return;
+
     const handleAuth = async () => {
-      // Deriv's OAuth2 implicit flow returns tokens in the hash
+      setAuthHandled(true);
       const hash = window.location.hash.substring(1);
+      // Clear the hash from the URL to prevent re-processing and for cleanliness
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      
       const params = new URLSearchParams(hash);
-      const token = params.get('token1'); // First account token
+      const token = params.get('token1');
 
       if (token) {
         await login(token);
-        // Redirect to a page that shows the linked account status
-        router.replace('/settings');
+        // The redirect will now be handled by the effect below.
       } else {
-        // Check for error in query params as a fallback, as per some OAuth flows
         const errorParam = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
-        if(errorParam) {
+        if (errorParam) {
           setError(`Authentication failed: ${errorParam} - ${errorDescription || 'No description provided.'}`);
         } else if (!hash.includes('token')) {
-          // If there's no hash or no token in it, it's likely an error or invalid state.
           setError('Authentication callback is missing token data. Please try linking your account again.');
         }
       }
     };
-    
-    handleAuth();
-  }, [login, router, searchParams]);
 
+    handleAuth();
+  }, [login, authHandled, searchParams]);
+
+  useEffect(() => {
+    // This effect handles redirecting the user AFTER the authentication state is confirmed.
+    if (isLinked && !isLoading) {
+      router.replace('/settings');
+    }
+  }, [isLinked, isLoading, router]);
+
+
+  if (error) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center">
+        <h2 className="text-2xl font-semibold text-destructive">Authentication Error</h2>
+        <p className="max-w-md text-muted-foreground">{error}</p>
+        <button onClick={() => router.push('/settings')} className="mt-4 text-primary underline">
+          Return to Settings
+        </button>
+      </div>
+    );
+  }
+
+  // Show a loading indicator while processing auth or waiting for redirect.
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center">
-      {error ? (
-        <>
-          <h2 className="text-2xl font-semibold text-destructive">Authentication Error</h2>
-          <p className="max-w-md text-muted-foreground">{error}</p>
-          <button onClick={() => router.push('/settings')} className="mt-4 text-primary underline">
-            Return to Settings
-          </button>
-        </>
-      ) : (
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="text-lg">Authenticating, please wait...</span>
-        </div>
-      )}
+      <div className="flex items-center gap-2">
+        <Loader2 className="h-6 w-6 animate-spin" />
+        <span className="text-lg">Authenticating, please wait...</span>
+      </div>
     </div>
   );
 }
-
 
 export default function AuthCallbackPage() {
     return (
