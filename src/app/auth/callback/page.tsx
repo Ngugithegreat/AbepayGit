@@ -6,49 +6,52 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 
 function AuthCallback() {
-  const { login, isLinked, isLoading } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
-  const [authHandled, setAuthHandled] = useState(false);
+  const [message, setMessage] = useState('Authenticating, please wait...');
 
   useEffect(() => {
-    // This effect handles the one-time processing of the auth token from the URL.
-    if (authHandled) return;
-
     const handleAuth = async () => {
-      setAuthHandled(true);
+      // Get token from URL fragment
       const hash = window.location.hash.substring(1);
-      // Clear the hash from the URL to prevent re-processing and for cleanliness
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      
       const params = new URLSearchParams(hash);
       const token = params.get('token1');
 
+      // Clean the URL
+      window.history.replaceState(null, '', window.location.pathname);
+
       if (token) {
-        await login(token);
-        // The redirect will now be handled by the effect below.
+        setMessage('Verifying account details...');
+        const loginSuccess = await login(token);
+        
+        if (loginSuccess) {
+          setMessage('Authentication successful! Redirecting...');
+          // On success, redirect to the settings page.
+          router.replace('/settings');
+        } else {
+          // The login function itself will have logged the specific error.
+          // We just need to show a generic message here.
+          setError('Authentication failed. Please try linking your account again.');
+        }
       } else {
+        // This handles cases where the user is redirected here with an error from Deriv
         const errorParam = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
         if (errorParam) {
           setError(`Authentication failed: ${errorParam} - ${errorDescription || 'No description provided.'}`);
         } else if (!hash.includes('token')) {
+          // Or if they land here without a token at all
           setError('Authentication callback is missing token data. Please try linking your account again.');
         }
       }
     };
 
+    // Run only once
     handleAuth();
-  }, [login, authHandled, searchParams]);
-
-  useEffect(() => {
-    // This effect handles redirecting the user AFTER the authentication state is confirmed.
-    if (isLinked && !isLoading) {
-      router.replace('/settings');
-    }
-  }, [isLinked, isLoading, router]);
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty dependency array to run only on mount
 
   if (error) {
     return (
@@ -62,12 +65,11 @@ function AuthCallback() {
     );
   }
 
-  // Show a loading indicator while processing auth or waiting for redirect.
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center">
       <div className="flex items-center gap-2">
         <Loader2 className="h-6 w-6 animate-spin" />
-        <span className="text-lg">Authenticating, please wait...</span>
+        <span className="text-lg">{message}</span>
       </div>
     </div>
   );
@@ -78,5 +80,5 @@ export default function AuthCallbackPage() {
         <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
             <AuthCallback />
         </Suspense>
-    )
+    );
 }

@@ -79,7 +79,7 @@ interface AuthContextType {
   user: DerivUser | null;
   selectedAccount: DerivAccount | null;
   isLoading: boolean;
-  login: (token: string) => Promise<void>;
+  login: (token: string) => Promise<boolean>;
   logout: () => void;
   updateBalance: (newBalance: number) => void;
 }
@@ -117,10 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const verifyToken = useCallback(async (authToken: string) => {
+  const verifyToken = useCallback(async (authToken: string): Promise<boolean> => {
     if (!api) {
         setIsLoading(false);
-        return;
+        return false;
     }
     setIsLoading(true);
     
@@ -131,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) {
             console.error("Deriv API authorization failed:", error.message);
             logout();
-            return;
+            return false;
         }
 
         const fullUser = authorize as DerivUser;
@@ -142,16 +142,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSelectedAccount(realAccount);
             setToken(authToken);
             localStorage.setItem('deriv_token', authToken);
+            setIsLoading(false);
+            return true;
         } else {
             console.error("No real Deriv account found for this user.");
             logout();
+            setIsLoading(false);
+            return false;
         }
 
     } catch (e) {
         console.error("An error occurred during token verification:", e);
         logout();
-    } finally {
         setIsLoading(false);
+        return false;
     }
   }, [api, logout]);
   
@@ -166,8 +170,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [api, verifyToken]);
   
-  const login = useCallback(async (authToken: string) => {
-    await verifyToken(authToken);
+  const login = useCallback(async (authToken: string): Promise<boolean> => {
+    return await verifyToken(authToken);
   }, [verifyToken]);
 
   const updateBalance = (newBalance: number) => {
