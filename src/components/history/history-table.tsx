@@ -11,6 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import type { Transaction } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 
 type HistoryTableProps = {
   transactions: Transaction[];
@@ -34,7 +35,7 @@ export default function HistoryTable({ transactions }: HistoryTableProps) {
     <Card>
       <CardHeader>
           <CardTitle>Recent Transactions</CardTitle>
-          <CardDescription>A log of your recent deposit activities.</CardDescription>
+          <CardDescription>A log of your recent deposit and withdrawal activities.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="border rounded-md">
@@ -43,6 +44,7 @@ export default function HistoryTable({ transactions }: HistoryTableProps) {
                 <TableRow>
                 <TableHead>Transaction ID</TableHead>
                 <TableHead className="hidden sm:table-cell">Date</TableHead>
+                <TableHead className="hidden md:table-cell">Type</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead className="text-right">Status</TableHead>
                 </TableRow>
@@ -52,6 +54,12 @@ export default function HistoryTable({ transactions }: HistoryTableProps) {
                 <TableRow key={transaction.id}>
                     <TableCell className="font-medium">{transaction.id}</TableCell>
                     <TableCell className="hidden sm:table-cell">{new Date(transaction.date).toLocaleDateString()}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                        <div className="flex items-center gap-2">
+                            {transaction.type === 'Deposit' ? <ArrowDownCircle className="h-4 w-4 text-accent" /> : <ArrowUpCircle className="h-4 w-4 text-destructive" />}
+                            <span>{transaction.type}</span>
+                        </div>
+                    </TableCell>
                     <TableCell>${transaction.amount.toFixed(2)}</TableCell>
                     <TableCell className="text-right">
                     <Badge variant={getBadgeVariant(transaction.status)}>

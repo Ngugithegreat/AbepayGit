@@ -4,4 +4,5 @@ export type Transaction = {
   amount: number;
   currency: 'USD';
   status: 'Completed' | 'Pending' | 'Failed';
+  type: 'Deposit' | 'Withdrawal';
 };

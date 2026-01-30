@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowDownCircle, Loader2 } from 'lucide-react';
+import { ArrowUpCircle, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -25,53 +25,43 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
-const depositSchema = z.object({
+const withdrawSchema = z.object({
   mpesaNumber: z.string().regex(/^(?:254|\+254|0)?(7(?:(?:[0-9][0-9]))[0-9]{6})$/, 'Please enter a valid Kenyan M-PESA number.'),
-  amount: z.coerce.number().positive({ message: 'Please enter a valid amount.' }).min(1, { message: 'Minimum deposit is $1.' }).max(5000, { message: 'Maximum deposit is $5000.' }),
+  amount: z.coerce.number().positive({ message: 'Please enter a valid amount.' }).min(1, { message: 'Minimum withdrawal is $1.' }),
 });
 
-export default function DepositCard() {
+export default function WithdrawCard() {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [balance, setBalance] = useState(1250.75); // Mock balance
-  const [showStkPush, setShowStkPush] = useState(false);
+  const [balance, setBalance] = useState(1250.75); // Mock balance, should be shared state
 
-  const form = useForm<z.infer<typeof depositSchema>>({
-    resolver: zodResolver(depositSchema),
+  const form = useForm<z.infer<typeof withdrawSchema>>({
+    resolver: zodResolver(withdrawSchema),
     defaultValues: {
-      amount: undefined,
       mpesaNumber: '',
+      amount: undefined,
     },
   });
 
-  function onSubmit(values: z.infer<typeof depositSchema>) {
+  function onSubmit(values: z.infer<typeof withdrawSchema>) {
+    if (values.amount > balance) {
+        form.setError('amount', { message: 'Withdrawal amount cannot exceed your balance.' });
+        return;
+    }
     setIsProcessing(true);
-    setShowStkPush(true);
-    // Simulate STK push and transaction processing
+    // Simulate withdrawal processing
     setTimeout(() => {
-      const isSuccess = Math.random() > 0.1; // 90% success rate
-
-      if (isSuccess) {
-        setBalance((prev) => prev + values.amount);
-        toast({
-          title: 'Deposit Successful',
-          description: `Successfully deposited $${values.amount.toFixed(2)}. Your new balance is $${(balance + values.amount).toFixed(2)}.`,
-          variant: 'default',
-          className: 'bg-accent text-accent-foreground border-accent',
-        });
-        form.reset();
-      } else {
-        toast({
-          title: 'Deposit Failed',
-          description: 'The M-PESA transaction was not completed. Please try again.',
-          variant: 'destructive',
-        });
-      }
+      setBalance((prev) => prev - values.amount);
+      toast({
+        title: 'Withdrawal Initiated',
+        description: `Your withdrawal of $${values.amount.toFixed(2)} to ${values.mpesaNumber} is being processed.`,
+        variant: 'default',
+        className: 'bg-accent text-accent-foreground border-accent',
+      });
+      form.reset();
       setIsProcessing(false);
-      setShowStkPush(false);
-    }, 4000);
+    }, 3000);
   }
 
   return (
@@ -79,10 +69,9 @@ export default function DepositCard() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardHeader>
-            <CardTitle>Make a Deposit</CardTitle>
+            <CardTitle>Make a Withdrawal</CardTitle>
             <CardDescription>
-              Your current account balance is{' '}
-              <span className="font-semibold text-primary">${balance.toFixed(2)}</span>
+              Funds will be sent to your M-PESA account.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -93,7 +82,7 @@ export default function DepositCard() {
                 <FormItem>
                   <FormLabel>M-PESA Number</FormLabel>
                   <FormControl>
-                    <Input type="tel" placeholder="e.g. 254712345678" {...field} />
+                    <Input type="tel" placeholder="254712345678" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -117,28 +106,19 @@ export default function DepositCard() {
                 </FormItem>
               )}
             />
-             <div className="text-sm text-muted-foreground">Current Rate: <span className="font-semibold text-foreground">1 USD = 130 KES</span> (example rate)</div>
-            {showStkPush && (
-                <Alert>
-                    <Loader2 className="h-4 w-4 animate-spin"/>
-                    <AlertTitle>Confirm on your phone</AlertTitle>
-                    <AlertDescription>
-                        A push notification has been sent to your M-PESA number. Please enter your M-PESA PIN to complete the deposit.
-                    </AlertDescription>
-                </Alert>
-            )}
+             <div className="text-sm text-muted-foreground">Current Rate: <span className="font-semibold text-foreground">1 USD = 128 KES</span> (example rate)</div>
           </CardContent>
           <CardFooter>
             <Button type="submit" disabled={isProcessing} className="w-full sm:w-auto">
               {isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Awaiting Confirmation...
+                  Processing...
                 </>
               ) : (
                 <>
-                  <ArrowDownCircle className="mr-2 h-4 w-4" />
-                  Initiate Deposit
+                  <ArrowUpCircle className="mr-2 h-4 w-4" />
+                  Initiate Withdrawal
                 </>
               )}
             </Button>

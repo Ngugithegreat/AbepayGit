@@ -7,6 +7,7 @@ export const transactions: Transaction[] = [
     amount: 100,
     currency: 'USD',
     status: 'Completed',
+    type: 'Deposit',
   },
   {
     id: 'TXN456789',
@@ -14,6 +15,7 @@ export const transactions: Transaction[] = [
     amount: 50,
     currency: 'USD',
     status: 'Completed',
+    type: 'Deposit',
   },
   {
     id: 'TXN123456',
@@ -21,6 +23,7 @@ export const transactions: Transaction[] = [
     amount: 250,
     currency: 'USD',
     status: 'Failed',
+    type: 'Deposit',
   },
   {
     id: 'TXN987654',
@@ -28,6 +31,7 @@ export const transactions: Transaction[] = [
     amount: 75,
     currency: 'USD',
     status: 'Completed',
+    type: 'Withdrawal',
   },
   {
     id: 'TXN654321',
@@ -35,5 +39,14 @@ export const transactions: Transaction[] = [
     amount: 120,
     currency: 'USD',
     status: 'Pending',
+    type: 'Deposit',
+  },
+  {
+    id: 'TXN321654',
+    date: '2024-07-16T14:00:00Z',
+    amount: 200,
+    currency: 'USD',
+    status: 'Completed',
+    type: 'Withdrawal',
   },
 ];

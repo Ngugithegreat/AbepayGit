@@ -36,6 +36,8 @@ export default function AccountCard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLinked, setIsLinked] = useState(false);
   const [linkedAccountId, setLinkedAccountId] = useState('');
+  const [linkedAccountName, setLinkedAccountName] = useState('');
+  const [linkedAccountBalance, setLinkedAccountBalance] = useState(0);
 
   const form = useForm<z.infer<typeof accountSchema>>({
     resolver: zodResolver(accountSchema),
@@ -50,6 +52,8 @@ export default function AccountCard() {
     setTimeout(() => {
       setIsLinked(true);
       setLinkedAccountId('CR1234567'); // Mock account ID
+      setLinkedAccountName('Demo User');
+      setLinkedAccountBalance(1250.75);
       toast({
         title: 'Account Linked',
         description: 'Your Deriv account has been successfully linked.',
@@ -66,6 +70,8 @@ export default function AccountCard() {
     setTimeout(() => {
         setIsLinked(false);
         setLinkedAccountId('');
+        setLinkedAccountName('');
+        setLinkedAccountBalance(0);
         toast({
             title: 'Account Unlinked',
             description: 'Your Deriv account has been unlinked.',
@@ -85,8 +91,10 @@ export default function AccountCard() {
                 <Alert variant="default" className="border-accent bg-accent/10">
                     <CheckCircle className="h-4 w-4 text-accent" />
                     <AlertTitle className="text-accent">Connection Active</AlertTitle>
-                    <AlertDescription>
-                        Deriv Account ID: <span className="font-semibold">{linkedAccountId}</span>
+                    <AlertDescription className="flex flex-col gap-1 mt-2">
+                        <span>Welcome, <span className="font-semibold">{linkedAccountName}</span></span>
+                        <span>Account ID: <span className="font-semibold">{linkedAccountId}</span></span>
+                        <span>Balance: <span className="font-semibold">${linkedAccountBalance.toFixed(2)}</span></span>
                     </AlertDescription>
                 </Alert>
             </CardContent>
