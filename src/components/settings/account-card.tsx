@@ -1,41 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Link as LinkIcon, Unlink, Loader2, CheckCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAuth } from '@/context/auth-context';
-import { Skeleton } from '../ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
-export default function AccountCard() {
+export default function AccountSettings() {
   const { toast } = useToast();
-  const { isLinked, user, isLoading, logout, selectedAccount } = useAuth();
+  const { user, selectedAccount, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [authUrl, setAuthUrl] = useState('');
-  const [authError, setAuthError] = useState('');
-
-  useEffect(() => {
-    const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
-
-    if (!appId) {
-        setAuthError("Deriv App ID is not configured. Please contact support.");
-        return;
-    }
-
-    if (typeof window !== 'undefined') {
-      const redirectUri = `${window.location.protocol}//${window.location.host}/auth/callback`;
-      setAuthUrl(`https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read+payments+trade`);
-    }
-  }, []);
 
   function handleUnlink() {
     setIsLoggingOut(true);
@@ -48,82 +20,59 @@ export default function AccountCard() {
         setIsLoggingOut(false);
     }, 1000)
   }
-  
-  if (isLoading) {
-    return (
-        <Card>
-            <CardHeader>
-                <Skeleton className="h-8 w-48" />
-                <Skeleton className="h-4 w-full max-w-sm" />
-            </CardHeader>
-            <CardContent>
-                <Skeleton className="h-24 w-full" />
-            </CardContent>
-            <CardFooter>
-                 <Skeleton className="h-10 w-36" />
-            </CardFooter>
-        </Card>
-    )
-  }
-
-  if (isLinked && user && selectedAccount) {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Account Linked</CardTitle>
-                <CardDescription>Your Deriv account is connected and ready for transactions.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Alert variant="default" className="border-accent bg-accent/10">
-                    <CheckCircle className="h-4 w-4 text-accent" />
-                    <AlertTitle className="text-accent">Connection Active</AlertTitle>
-                    <AlertDescription className="flex flex-col gap-1 mt-2">
-                        <span>Welcome, <span className="font-semibold">{user.fullname}</span></span>
-                        <span>Account ID: <span className="font-semibold">{selectedAccount.loginid}</span></span>
-                        <span>Balance: <span className="font-semibold">{selectedAccount.currency} {selectedAccount.balance.toFixed(2)}</span></span>
-                    </AlertDescription>
-                </Alert>
-            </CardContent>
-            <CardFooter>
-                 <Button variant="destructive" onClick={handleUnlink} disabled={isLoggingOut}>
-                    {isLoggingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Unlink className="mr-2 h-4 w-4" />}
-                    Unlink Account
-                 </Button>
-            </CardFooter>
-        </Card>
-    )
-  }
 
   return (
-    <Card>
-        <CardHeader>
-        <CardTitle>Link Deriv Account</CardTitle>
-        <CardDescription>
-            To use DerivPay, you need to connect your Deriv account. You will be redirected to Deriv to securely log in and authorize our application.
-        </CardDescription>
-        </CardHeader>
-        <CardContent>
-            {authError ? (
-                 <Alert variant="destructive">
-                    <AlertTitle>Configuration Error</AlertTitle>
-                    <AlertDescription>
-                        {authError}
-                    </AlertDescription>
-                </Alert>
-            ) : (
-                <p className='text-sm text-muted-foreground'>
-                    We will request permissions to view your account activity and perform payments on your behalf. We do not store your login credentials.
-                </p>
-            )}
-        </CardContent>
-        <CardFooter>
-        <Button asChild disabled={!authUrl || !!authError}>
-            <a href={authUrl}>
-                <LinkIcon className="mr-2 h-4 w-4" />
-                Login & Link with Deriv
-            </a>
-        </Button>
-        </CardFooter>
-    </Card>
+    <>
+    <div className="glass-effect rounded-xl p-6 custom-shadow mb-6">
+        <h2 className="text-lg font-medium text-white mb-4">Connected Deriv Account</h2>
+        {selectedAccount ? (
+            <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                    <div className="flex items-center">
+                        <i className="fas fa-wallet text-blue-400 text-xl mr-4"></i>
+                        <div>
+                            <p className="text-sm font-medium text-white">{user?.fullname}</p>
+                            <p className="text-xs text-gray-400">{selectedAccount.loginid}</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                         <p className="text-sm font-bold text-white">{selectedAccount.currency} {selectedAccount.balance.toFixed(2)}</p>
+                         <p className="text-xs text-gray-400">Current Balance</p>
+                    </div>
+                </div>
+                 <button onClick={handleUnlink} disabled={isLoggingOut} className="w-full px-3 py-2 bg-red-900 hover:bg-red-800 text-red-300 text-sm font-medium rounded-lg transition duration-200 flex items-center justify-center">
+                    {isLoggingOut ? <span className="loader h-4 w-4 border-2 rounded-full"></span> : <><i className="fas fa-unlink mr-2"></i> Unlink Account</>}
+                </button>
+            </div>
+        ) : (
+            <p className="text-gray-400">No account linked.</p>
+        )}
+    </div>
+
+    <div className="glass-effect rounded-xl p-6 custom-shadow">
+        <h3 className="font-medium text-white mb-4">Active Sessions</h3>
+        <div className="space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-700">
+            <div>
+            <p className="text-sm font-medium text-white">Current Session</p>
+            <p className="text-xs text-gray-400">Safari on macOS • Nairobi, Kenya</p>
+            </div>
+            <div className="px-2 py-0.5 text-xs rounded-full bg-green-900 text-green-400">Active</div>
+        </div>
+        <div className="flex items-center justify-between pb-2 border-b border-slate-700">
+            <div>
+            <p className="text-sm font-medium text-white">Chrome</p>
+            <p className="text-xs text-gray-400">Windows • Mombasa, Kenya • 2 days ago</p>
+            </div>
+            <button className="text-xs text-red-500 hover:text-red-400">Logout</button>
+        </div>
+        </div>
+        <div className="mt-4">
+        <button className="w-full px-3 py-1.5 bg-red-900 hover:bg-red-800 text-red-300 text-sm font-medium rounded-lg transition duration-200">
+            Logout from all devices
+        </button>
+        </div>
+    </div>
+    </>
   );
 }

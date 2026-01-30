@@ -1,90 +1,120 @@
-'use client'; // Needs to be client for useAuth hook
+'use client';
 
-import React from 'react';
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarFooter,
-  SidebarInset,
-} from '@/components/ui/sidebar';
-import { Logo } from '@/components/logo';
-import { SidebarNav } from '@/components/sidebar-nav';
-import { Header } from '@/components/header';
-import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { Skeleton } from './ui/skeleton';
+import { Loader2 } from 'lucide-react';
 
-export function AppLayout({ children, pageTitle }: AppLayoutProps) {
-  const { user, isLinked, isLoading } = useAuth();
+const navLinks = [
+  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/deposit', label: 'Deposit' },
+  { href: '/withdraw', label: 'Withdraw' },
+  { href: '/history', label: 'History' },
+  { href: '/profile', label: 'Profile' },
+  { href: '/settings', label: 'Settings' },
+];
+
+export function AppLayout({ children }: { children: React.ReactNode }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const { logout, isLinked, isLoading } = useAuth();
+  const router = useRouter();
   
-  const getInitials = (name: string) => {
-    if (!name) return '';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  useEffect(() => {
+    if (!isLoading && !isLinked) {
+      router.replace('/login');
+    }
+  }, [isLoading, isLinked, router]);
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
+  if (isLoading || !isLinked) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-900">
+        <div className="loader h-12 w-12 rounded-full border-4 border-slate-500"></div>
+      </div>
+    );
   }
 
   return (
-    <SidebarProvider>
-      <Sidebar side="left" collapsible="icon" className="border-r">
-        <SidebarHeader>
-            <Logo />
-        </SidebarHeader>
-        <Separator className="group-data-[collapsible=icon]:hidden" />
-        <SidebarContent>
-          <SidebarNav />
-        </SidebarContent>
-        <Separator />
-        <SidebarFooter>
-            <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                         <Link href="/settings">
-                            <div className="flex cursor-pointer items-center gap-3 p-2 hover:bg-sidebar-accent rounded-md">
-                                <Avatar className="h-9 w-9">
-                                    <AvatarImage src={`https://picsum.photos/seed/${user?.loginid || 'user-avatar'}/40/40`} data-ai-hint="profile avatar" alt="User Avatar" />
-                                    <AvatarFallback>{isLoading ? <Skeleton className='h-9 w-9 rounded-full' /> : (isLinked && user ? getInitials(user.fullname) : 'DU')}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-                                    {isLoading ? (
-                                        <div className='space-y-1'>
-                                            <Skeleton className='h-4 w-24' />
-                                            <Skeleton className='h-3 w-32' />
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <span className="text-sm font-medium">{isLinked && user ? user.fullname : 'Demo User'}</span>
-                                            <span className="text-xs text-muted-foreground">{isLinked && user ? user.email : 'demo@derivpay.app'}</span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" align="center" className="group-data-[collapsible=expanded]:hidden">
-                        {isLoading ? <p>Loading...</p> : (
-                            <>
-                                <p>{isLinked && user ? user.fullname : 'Demo User'}</p>
-                                <p className="text-muted-foreground">{isLinked && user ? user.email : 'demo@derivpay.app'}</p>
-                            </>
-                        )}
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        </SidebarFooter>
-      </Sidebar>
-      <SidebarInset>
-        <Header pageTitle={pageTitle} />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+      <nav className="bg-slate-800 border-b border-slate-700 sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <Link href="/dashboard" className="flex-shrink-0 flex items-center">
+                <span className="text-blue-500 text-xl font-bold">DerivPay</span>
+              </Link>
+            </div>
+            <div className="flex items-center">
+              <div className="hidden md:block">
+                <div className="flex items-center space-x-1">
+                  {navLinks.map(link => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        pathname === link.href
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-300 hover:bg-slate-700 hover:text-white'
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+              <div className="ml-4 flex items-center">
+                <button
+                  onClick={handleLogout}
+                  className="bg-slate-700 p-1.5 rounded-full text-gray-300 hover:bg-slate-600 focus:outline-none"
+                  aria-label="Logout"
+                >
+                  <i className="fas fa-sign-out-alt"></i>
+                </button>
+              </div>
+              <div className="ml-4 md:hidden">
+                <button
+                  id="mobileMenuButton"
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="bg-slate-700 p-1.5 rounded-full text-gray-300 hover:bg-slate-600 focus:outline-none"
+                  aria-label="Open menu"
+                >
+                  <i className="fas fa-bars"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {menuOpen && (
+          <div id="mobileMenu" className="md:hidden border-t border-slate-700">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+              {navLinks.map(link => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-base font-medium w-full text-left ${
+                    pathname === link.href
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-300 hover:bg-slate-700 hover:text-white'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </nav>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
+      </main>
+    </div>
   );
 }
-
-type AppLayoutProps = {
-  children: React.ReactNode;
-  pageTitle: string;
-};
