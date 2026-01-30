@@ -27,13 +27,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     // If the auth state is not loading and the user is not linked,
     // redirect them to the login page.
     if (!isLoading && !isLinked) {
-      router.replace('/');
+      router.replace('/login');
     }
   }, [isLoading, isLinked, router]);
 
   const handleLogout = () => {
     logout();
-    router.push('/');
+    router.push('/login');
   };
 
   // While the auth state is loading, or if the user is not linked,

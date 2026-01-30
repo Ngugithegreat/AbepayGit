@@ -25,7 +25,7 @@ export default function AuthCallbackPage() {
       if (error) {
         setMessage(`Authentication failed: ${error}. Redirecting...`);
         setIsError(true);
-        setTimeout(() => router.replace('/'), 3000);
+        setTimeout(() => router.replace('/login'), 3000);
         return;
       }
 
@@ -43,14 +43,14 @@ export default function AuthCallbackPage() {
             'Failed to verify your account. Please try logging in again. Redirecting...'
           );
           setIsError(true);
-          setTimeout(() => router.replace('/'), 4000);
+          setTimeout(() => router.replace('/login'), 4000);
         }
       } else {
         // No token or error was found in the URL.
         // This could be a direct navigation or a misconfigured redirect.
         setMessage('Invalid authentication callback. Redirecting...');
         setIsError(true);
-        setTimeout(() => router.replace('/'), 3000);
+        setTimeout(() => router.replace('/login'), 3000);
       }
     };
 
