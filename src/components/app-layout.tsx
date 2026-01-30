@@ -23,13 +23,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   
   useEffect(() => {
     if (!isLoading && !isLinked) {
-      router.replace('/login');
+      router.replace('/');
     }
   }, [isLoading, isLinked, router]);
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
+    router.push('/');
   };
 
   if (isLoading || !isLinked) {

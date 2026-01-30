@@ -52,7 +52,13 @@ class DerivAPI {
     await this.connection_promise;
     
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        throw new Error("WebSocket is not connected.");
+        // In case of disconnection, try to reconnect.
+        this.connect();
+        await this.connection_promise;
+    }
+
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      throw new Error("WebSocket is not connected.");
     }
       
     return new Promise((resolve) => {
@@ -114,12 +120,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
     setUser(null);
     setSelectedAccount(null);
-    setIsLoading(false);
   }, []);
 
   const verifyToken = useCallback(async (authToken: string): Promise<boolean> => {
     if (!api) {
-        setIsLoading(false);
         return false;
     }
     setIsLoading(true);
@@ -131,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) {
             console.error("Deriv API authorization failed:", error.message);
             logout();
+            setIsLoading(false);
             return false;
         }
 
@@ -159,12 +164,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [api, logout]);
   
+  // On initial load, check for a token in local storage.
   useEffect(() => {
     const storedToken = localStorage.getItem('deriv_token');
-    if (storedToken) {
-      if (api) {
+    if (storedToken && api) {
         verifyToken(storedToken);
-      }
     } else {
       setIsLoading(false);
     }
@@ -184,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const value = {
-    isLinked: !!token,
+    isLinked: !!token && !isLoading,
     user,
     selectedAccount,
     isLoading,
