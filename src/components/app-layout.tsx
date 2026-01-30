@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import Chatbot from '@/components/chatbot/chatbot';
+import { Loader2 } from 'lucide-react';
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -22,6 +23,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   
   useEffect(() => {
+    // This effect protects the authenticated routes.
+    // If the auth state is not loading and the user is not linked,
+    // redirect them to the login page.
     if (!isLoading && !isLinked) {
       router.replace('/');
     }
@@ -32,10 +36,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     router.push('/');
   };
 
+  // While the auth state is loading, or if the user is not linked,
+  // show a loading screen. This prevents a flicker of the page content
+  // before the redirect in the useEffect above can happen.
   if (isLoading || !isLinked) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-slate-900">
-        <div className="loader h-12 w-12 rounded-full border-4 border-slate-500"></div>
+        <Loader2 className="h-12 w-12 animate-spin text-blue-500"/>
       </div>
     );
   }

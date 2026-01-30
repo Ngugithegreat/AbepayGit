@@ -13,11 +13,13 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const processAuth = async () => {
+      // The token is in the hash part of the URL, not search params
       const hash = window.location.hash.substring(1);
       const params = new URLSearchParams(hash);
       const token = params.get('token');
       const error = params.get('error');
 
+      // Clean the URL
       window.history.replaceState(null, '', window.location.pathname);
 
       if (error) {
@@ -28,13 +30,15 @@ export default function AuthCallbackPage() {
       }
 
       if (token) {
+        // We have a token, attempt to log in.
         const success = await login(token);
 
         if (success) {
           setMessage('Success! Redirecting to your dashboard...');
-          // Correctly redirect to the dashboard page
+          // On successful login, redirect to the dashboard.
           router.replace('/dashboard');
         } else {
+          // The login function returned false, meaning verification failed.
           setMessage(
             'Failed to verify your account. Please try logging in again. Redirecting...'
           );
@@ -42,19 +46,16 @@ export default function AuthCallbackPage() {
           setTimeout(() => router.replace('/'), 4000);
         }
       } else {
-        // Handle cases where there's no token but it's not an error from Deriv
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        if (!code) {
-            setMessage('Invalid authentication callback. Redirecting...');
-            setIsError(true);
-            setTimeout(() => router.replace('/'), 3000);
-        }
+        // No token or error was found in the URL.
+        // This could be a direct navigation or a misconfigured redirect.
+        setMessage('Invalid authentication callback. Redirecting...');
+        setIsError(true);
+        setTimeout(() => router.replace('/'), 3000);
       }
     };
 
     processAuth();
-    // We only want this to run once on mount.
+    // We only want this to run once on mount, so we pass an empty dependency array.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
