@@ -46,23 +46,44 @@ export default function AccountCard() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof accountSchema>) {
+  async function onSubmit(values: z.infer<typeof accountSchema>) {
     setIsProcessing(true);
-    // Simulate API validation
-    setTimeout(() => {
-      setIsLinked(true);
-      setLinkedAccountId('CR1234567'); // Mock account ID
-      setLinkedAccountName('Demo User');
-      setLinkedAccountBalance(1250.75);
+    try {
+      const response = await fetch('/api/link-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ apiToken: values.apiToken }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to link account.');
+      }
+
+      setIsLinked(data.isLinked);
+      setLinkedAccountId(data.linkedAccountId);
+      setLinkedAccountName(data.linkedAccountName);
+      setLinkedAccountBalance(data.linkedAccountBalance);
+
       toast({
         title: 'Account Linked',
         description: 'Your Deriv account has been successfully linked.',
         variant: 'default',
-        className: 'bg-accent text-accent-foreground border-accent'
+        className: 'bg-accent text-accent-foreground border-accent',
       });
-      setIsProcessing(false);
       form.reset();
-    }, 2000);
+    } catch (error: any) {
+      toast({
+        title: 'Linking Failed',
+        description: error.message || 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   function handleUnlink() {
