@@ -79,7 +79,7 @@ interface AuthContextType {
   user: DerivUser | null;
   selectedAccount: DerivAccount | null;
   isLoading: boolean;
-  login: (token: string) => void;
+  login: (token: string) => Promise<void>;
   logout: () => void;
   updateBalance: (newBalance: number) => void;
 }
@@ -166,8 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [api, verifyToken]);
   
-  const login = useCallback((authToken: string) => {
-    verifyToken(authToken);
+  const login = useCallback(async (authToken: string) => {
+    await verifyToken(authToken);
   }, [verifyToken]);
 
   const updateBalance = (newBalance: number) => {

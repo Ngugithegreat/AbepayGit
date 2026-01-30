@@ -12,26 +12,30 @@ function AuthCallback() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Deriv's OAuth2 implicit flow returns tokens in the hash
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-    const token = params.get('token1'); // First account token
+    const handleAuth = async () => {
+      // Deriv's OAuth2 implicit flow returns tokens in the hash
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const token = params.get('token1'); // First account token
 
-    if (token) {
-      login(token);
-      // Redirect to a page that shows the linked account status
-      router.replace('/settings');
-    } else {
-      // Check for error in query params as a fallback, as per some OAuth flows
-      const errorParam = searchParams.get('error');
-      const errorDescription = searchParams.get('error_description');
-      if(errorParam) {
-        setError(`Authentication failed: ${errorParam} - ${errorDescription || 'No description provided.'}`);
-      } else if (!hash.includes('token')) {
-        // If there's no hash or no token in it, it's likely an error or invalid state.
-        setError('Authentication callback is missing token data. Please try linking your account again.');
+      if (token) {
+        await login(token);
+        // Redirect to a page that shows the linked account status
+        router.replace('/settings');
+      } else {
+        // Check for error in query params as a fallback, as per some OAuth flows
+        const errorParam = searchParams.get('error');
+        const errorDescription = searchParams.get('error_description');
+        if(errorParam) {
+          setError(`Authentication failed: ${errorParam} - ${errorDescription || 'No description provided.'}`);
+        } else if (!hash.includes('token')) {
+          // If there's no hash or no token in it, it's likely an error or invalid state.
+          setError('Authentication callback is missing token data. Please try linking your account again.');
+        }
       }
-    }
+    };
+    
+    handleAuth();
   }, [login, router, searchParams]);
 
   return (
