@@ -6,52 +6,53 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 
 function AuthCallback() {
-  const { login } = useAuth();
+  const { login, isLinked } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState('Authenticating, please wait...');
+  const [hasProcessed, setHasProcessed] = useState(false);
 
+  // Effect to process the token from the URL
   useEffect(() => {
+    if (isLinked || hasProcessed) {
+      return;
+    }
+
     const handleAuth = async () => {
-      // Get token from URL fragment
+      setHasProcessed(true);
+      
       const hash = window.location.hash.substring(1);
       const params = new URLSearchParams(hash);
-      const token = params.get('token1');
-
-      // Clean the URL
-      window.history.replaceState(null, '', window.location.pathname);
+      const token = params.get('token'); // Corrected from 'token1'
 
       if (token) {
-        setMessage('Verifying account details...');
-        const loginSuccess = await login(token);
+        window.history.replaceState(null, '', window.location.pathname);
         
-        if (loginSuccess) {
-          setMessage('Authentication successful! Redirecting...');
-          // On success, redirect to the settings page.
-          router.replace('/settings');
-        } else {
-          // The login function itself will have logged the specific error.
-          // We just need to show a generic message here.
-          setError('Authentication failed. Please try linking your account again.');
+        const loginSuccess = await login(token);
+        if (!loginSuccess) {
+          setError('Authentication failed. The token could not be verified. Please try linking your account again.');
         }
+        // Redirection is handled by the next effect
       } else {
-        // This handles cases where the user is redirected here with an error from Deriv
         const errorParam = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
         if (errorParam) {
           setError(`Authentication failed: ${errorParam} - ${errorDescription || 'No description provided.'}`);
-        } else if (!hash.includes('token')) {
-          // Or if they land here without a token at all
+        } else if (!hash.includes('token=')) {
           setError('Authentication callback is missing token data. Please try linking your account again.');
         }
       }
     };
 
-    // Run only once
     handleAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Intentionally empty dependency array to run only on mount
+  }, [login, hasProcessed, isLinked]);
+
+  // Effect to handle redirection AFTER the auth state is updated
+  useEffect(() => {
+    if (isLinked) {
+      router.replace('/settings');
+    }
+  }, [isLinked, router]);
 
   if (error) {
     return (
@@ -69,7 +70,7 @@ function AuthCallback() {
     <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center">
       <div className="flex items-center gap-2">
         <Loader2 className="h-6 w-6 animate-spin" />
-        <span className="text-lg">{message}</span>
+        <span className="text-lg">{isLinked ? 'Success! Redirecting...' : 'Finalizing authentication...'}</span>
       </div>
     </div>
   );
