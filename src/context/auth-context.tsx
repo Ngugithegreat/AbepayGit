@@ -129,6 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     
     try {
+        // Store token immediately. If verification fails, logout() will remove it.
+        localStorage.setItem('deriv_token', authToken);
+
         const authorizeResponse = await api.authorize(authToken);
         const { authorize, error } = authorizeResponse;
 
@@ -146,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(fullUser);
             setSelectedAccount(realAccount);
             setToken(authToken);
-            localStorage.setItem('deriv_token', authToken);
+            // Token is already set in localStorage
             setIsLoading(false);
             return true;
         } else {

@@ -1,70 +1,77 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Loader2 } from 'lucide-react';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { login } = useAuth();
   const [message, setMessage] = useState('Finalizing authentication...');
   const [error, setError] = useState<string | null>(null);
+  const hasProcessed = useRef(false); // Prevent double processing
 
   useEffect(() => {
+    // Prevent running twice in development strict mode
+    if (hasProcessed.current) return;
+    hasProcessed.current = true;
+
     const processAuth = async () => {
-      // Deriv sends the token in the URL hash, not the search parameters.
-      const hash = window.location.hash.substring(1);
-      const hashParams = new URLSearchParams(hash);
-      const token = hashParams.get('token');
-      const callbackError = hashParams.get('error');
-
-      // Clean the URL for a better user experience and to prevent re-processing.
-      window.history.replaceState(null, '', window.location.pathname);
-
-      if (callbackError) {
-        setError(`Authentication failed: ${callbackError}.`);
-        setMessage('Authentication failed. Redirecting to login...');
-        setTimeout(() => router.replace('/login'), 3000);
-        return;
-      }
-
-      if (!token) {
-        setError('Invalid authentication callback. No token found.');
-        setMessage('Invalid authentication callback. Redirecting to login...');
-        setTimeout(() => router.replace('/login'), 3000);
-        return;
-      }
-
       try {
-        // The login function is awaited. It will not proceed until
-        // the user's session is fully verified and the auth context is updated.
+        // Get token from URL hash
+        const hash = window.location.hash.substring(1);
+        const hashParams = new URLSearchParams(hash);
+        const token = hashParams.get('token');
+        const callbackError = hashParams.get('error');
+
+        if (callbackError) {
+          setError(`Authentication failed: ${callbackError}`);
+          setMessage('Authentication failed. Redirecting to login...');
+          // Clean URL before redirect
+          window.history.replaceState(null, '', window.location.pathname);
+          setTimeout(() => router.replace('/login'), 3000);
+          return;
+        }
+
+        if (!token) {
+          setError('No authentication token found in callback.');
+          setMessage('Invalid authentication callback. Redirecting to login...');
+          // Clean URL before redirect
+          window.history.replaceState(null, '', window.location.pathname);
+          setTimeout(() => router.replace('/login'), 3000);
+          return;
+        }
+
+        // CRITICAL: Process login BEFORE cleaning the URL
+        setMessage('Verifying your account with Deriv...');
         const loginSuccess = await login(token);
 
+        // Only clean URL after successful login processing
+        window.history.replaceState(null, '', window.location.pathname);
+
         if (loginSuccess) {
-          // This redirect will only happen AFTER the await above is complete.
-          // This resolves the race condition.
-          setMessage('Authentication successful! Redirecting to your dashboard...');
+          setMessage('Authentication successful! Redirecting...');
+          // Small delay to ensure auth state is fully propagated
+          await new Promise(resolve => setTimeout(resolve, 500));
           router.replace('/dashboard');
         } else {
-          setError('Failed to verify your account with Deriv.');
-          setMessage('Failed to verify your account. Please try logging in again.');
-          setTimeout(() => router.replace('/login'), 4000);
+          setError('Failed to verify account.');
+          setMessage('Could not verify your account. Please try again.');
+          setTimeout(() => router.replace('/login'), 3000);
         }
       } catch (e) {
-        console.error('Login process error:', e);
-        setError('An unexpected error occurred during login.');
-        setMessage('An unexpected error occurred. Redirecting to login...');
-        setTimeout(() => router.replace('/login'), 4000);
+        console.error('Auth callback error:', e);
+        setError('An unexpected error occurred during authentication.');
+        setMessage('Authentication error. Redirecting to login...');
+        window.history.replaceState(null, '', window.location.pathname);
+        setTimeout(() => router.replace('/login'), 3000);
       }
     };
 
     processAuth();
-    // This effect should only run once on component mount.
-    // The dependencies (login, router) are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [login, router]);
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center bg-slate-900">
