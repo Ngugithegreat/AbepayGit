@@ -153,11 +153,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (realAccount) {
             console.log("Verification successful. User:", fullUser.email);
-            // Store token in localStorage ONLY on successful verification
-            localStorage.setItem('deriv_token', authToken);
+            
+            // CRITICAL: Set state BEFORE storing in localStorage
             setUser(fullUser);
             setSelectedAccount(realAccount);
             setToken(authToken);
+            
+            // Store token AFTER state is set
+            localStorage.setItem('deriv_token', authToken);
+            
+            // Set loading to false LAST
             setIsLoading(false);
             return true;
         } else {

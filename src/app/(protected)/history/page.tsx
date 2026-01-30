@@ -26,7 +26,6 @@ export default function HistoryPage() {
   const [filteredTransactions, setFilteredTransactions] = useState(transactions);
 
   return (
-    <AppLayout>
       <div className="slide-in">
         <div className="mb-6 flex justify-between items-center">
           <div>
@@ -78,6 +77,5 @@ export default function HistoryPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }

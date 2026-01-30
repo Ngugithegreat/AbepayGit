@@ -56,7 +56,6 @@ export default function WithdrawPage() {
   }
 
   return (
-    <AppLayout>
       <div className="slide-in">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white">Withdraw Funds</h1>
@@ -97,6 +96,5 @@ export default function WithdrawPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }

@@ -91,7 +91,6 @@ export default function DashboardPage() {
   const totalWithdrawals = 2560.00;
 
   return (
-    <AppLayout>
       <div className="slide-in">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
@@ -173,6 +172,5 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }

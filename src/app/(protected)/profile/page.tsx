@@ -21,7 +21,6 @@ export default function ProfilePage() {
   }
 
   return (
-    <AppLayout>
       <div className="slide-in">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white">Profile</h1>
@@ -70,6 +69,5 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }

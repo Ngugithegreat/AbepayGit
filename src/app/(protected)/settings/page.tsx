@@ -5,7 +5,6 @@ import AccountSettings from '@/components/settings/account-card';
 
 export default function SettingsPage() {
   return (
-    <AppLayout>
       <div className="slide-in">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white">Settings</h1>
@@ -47,6 +46,5 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-    </AppLayout>
   );
 }
