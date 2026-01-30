@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { useAuth } from '@/context/auth-context';
+import { Skeleton } from '../ui/skeleton';
 
 const depositSchema = z.object({
   mpesaNumber: z.string().regex(/^(?:254|\+254|0)?(7(?:(?:[0-9][0-9]))[0-9]{6})$/, 'Please enter a valid Kenyan M-PESA number.'),
@@ -34,8 +36,8 @@ const depositSchema = z.object({
 
 export default function DepositCard() {
   const { toast } = useToast();
+  const { isLinked, selectedAccount, isLoading, updateBalance } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [balance, setBalance] = useState(1250.75); // Mock balance
   const [showStkPush, setShowStkPush] = useState(false);
 
   const form = useForm<z.infer<typeof depositSchema>>({
@@ -47,17 +49,19 @@ export default function DepositCard() {
   });
 
   function onSubmit(values: z.infer<typeof depositSchema>) {
+    if (!selectedAccount) return;
     setIsProcessing(true);
     setShowStkPush(true);
     // Simulate STK push and transaction processing
     setTimeout(() => {
       const isSuccess = Math.random() > 0.1; // 90% success rate
+      const newBalance = selectedAccount.balance + values.amount;
 
       if (isSuccess) {
-        setBalance((prev) => prev + values.amount);
+        updateBalance(newBalance);
         toast({
           title: 'Deposit Successful',
-          description: `Successfully deposited $${values.amount.toFixed(2)}. Your new balance is $${(balance + values.amount).toFixed(2)}.`,
+          description: `Successfully deposited $${values.amount.toFixed(2)}. Your new balance is $${newBalance.toFixed(2)}.`,
           variant: 'default',
           className: 'bg-accent text-accent-foreground border-accent',
         });
@@ -74,6 +78,24 @@ export default function DepositCard() {
     }, 4000);
   }
 
+  if (!isLinked) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Make a Deposit</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Alert>
+                    <AlertTitle>Account Not Linked</AlertTitle>
+                    <AlertDescription>
+                        Please link your Deriv account in the settings page to make a deposit.
+                    </AlertDescription>
+                </Alert>
+            </CardContent>
+        </Card>
+    );
+  }
+
   return (
     <Card>
       <Form {...form}>
@@ -81,8 +103,12 @@ export default function DepositCard() {
           <CardHeader>
             <CardTitle>Make a Deposit</CardTitle>
             <CardDescription>
-              Your current account balance is{' '}
-              <span className="font-semibold text-primary">${balance.toFixed(2)}</span>
+              {isLoading || !selectedAccount ? <Skeleton className="h-5 w-64" /> : 
+              <>
+                Your current account balance is{' '}
+                <span className="font-semibold text-primary">{selectedAccount.currency} {selectedAccount.balance.toFixed(2)}</span>
+              </>
+              }
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -129,7 +155,7 @@ export default function DepositCard() {
             )}
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isProcessing} className="w-full sm:w-auto">
+            <Button type="submit" disabled={isProcessing || isLoading} className="w-full sm:w-auto">
               {isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -25,6 +25,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/auth-context';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 const withdrawSchema = z.object({
   mpesaNumber: z.string().regex(/^(?:254|\+254|0)?(7(?:(?:[0-9][0-9]))[0-9]{6})$/, 'Please enter a valid Kenyan M-PESA number.'),
@@ -33,9 +35,9 @@ const withdrawSchema = z.object({
 
 export default function WithdrawCard() {
   const { toast } = useToast();
+  const { isLinked, selectedAccount, isLoading, updateBalance } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [balance, setBalance] = useState(1250.75); // Mock balance, should be shared state
-
+  
   const form = useForm<z.infer<typeof withdrawSchema>>({
     resolver: zodResolver(withdrawSchema),
     defaultValues: {
@@ -45,14 +47,16 @@ export default function WithdrawCard() {
   });
 
   function onSubmit(values: z.infer<typeof withdrawSchema>) {
-    if (values.amount > balance) {
+    if (!selectedAccount) return;
+    if (values.amount > selectedAccount.balance) {
         form.setError('amount', { message: 'Withdrawal amount cannot exceed your balance.' });
         return;
     }
     setIsProcessing(true);
     // Simulate withdrawal processing
     setTimeout(() => {
-      setBalance((prev) => prev - values.amount);
+      const newBalance = selectedAccount.balance - values.amount;
+      updateBalance(newBalance);
       toast({
         title: 'Withdrawal Initiated',
         description: `Your withdrawal of $${values.amount.toFixed(2)} to ${values.mpesaNumber} is being processed.`,
@@ -62,6 +66,24 @@ export default function WithdrawCard() {
       form.reset();
       setIsProcessing(false);
     }, 3000);
+  }
+
+  if (!isLinked) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Make a Withdrawal</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Alert>
+                    <AlertTitle>Account Not Linked</AlertTitle>
+                    <AlertDescription>
+                        Please link your Deriv account in the settings page to make a withdrawal.
+                    </AlertDescription>
+                </Alert>
+            </CardContent>
+        </Card>
+    );
   }
 
   return (
@@ -109,7 +131,7 @@ export default function WithdrawCard() {
              <div className="text-sm text-muted-foreground">Current Rate: <span className="font-semibold text-foreground">1 USD = 128 KES</span> (example rate)</div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isProcessing} className="w-full sm:w-auto">
+            <Button type="submit" disabled={isProcessing || isLoading} className="w-full sm:w-auto">
               {isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
