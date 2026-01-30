@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 export default function AccountSettings() {
   const { toast } = useToast();
   const { user, selectedAccount, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const router = useRouter();
 
   function handleUnlink() {
     setIsLoggingOut(true);
@@ -18,6 +20,7 @@ export default function AccountSettings() {
             description: 'Your Deriv account has been unlinked.',
         });
         setIsLoggingOut(false);
+        router.push('/');
     }, 1000)
   }
 

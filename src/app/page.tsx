@@ -10,7 +10,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { isLinked, isLoading, login: authLogin } = useAuth();
+  const { isLinked, isLoading } = useAuth();
   const [authUrl, setAuthUrl] = useState('');
 
   // Redirect if already logged in
@@ -38,10 +38,11 @@ export default function LoginPage() {
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
     if (appId && typeof window !== 'undefined') {
       const redirectUri = `${window.location.protocol}//${window.location.host}/auth/callback`;
+      // Use the correct scope for reading user info, payments, and trading
       setAuthUrl(
         `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&redirect_uri=${encodeURIComponent(
           redirectUri
-        )}&scope=read+payments+trade`
+        )}&scope=read+payments+trade+trading_information`
       );
     }
   }, []);
@@ -68,11 +69,11 @@ export default function LoginPage() {
         </div>
 
         <button
-          onClick={() => authUrl && router.push(authUrl)}
+          onClick={() => authUrl && (window.location.href = authUrl)}
           disabled={!authUrl}
           className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <i className="fas fa-external-link-alt mr-2"></i> Login with Deriv
+          <i className="fas fa-external-link-alt mr-2"></i> Login & Link with Deriv
         </button>
       </div>
     </div>

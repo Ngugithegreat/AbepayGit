@@ -13,19 +13,17 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const processAuth = async () => {
-      // The token is in the URL hash for security (it won't be in server logs)
       const hash = window.location.hash.substring(1);
       const params = new URLSearchParams(hash);
       const token = params.get('token');
       const error = params.get('error');
 
-      // Remove the sensitive token from the URL bar immediately
       window.history.replaceState(null, '', window.location.pathname);
 
       if (error) {
         setMessage(`Authentication failed: ${error}. Redirecting...`);
         setIsError(true);
-        setTimeout(() => router.replace('/'), 4000);
+        setTimeout(() => router.replace('/'), 3000);
         return;
       }
 
@@ -34,6 +32,7 @@ export default function AuthCallbackPage() {
 
         if (success) {
           setMessage('Success! Redirecting to your dashboard...');
+          // Correctly redirect to the dashboard page
           router.replace('/dashboard');
         } else {
           setMessage(
@@ -43,14 +42,19 @@ export default function AuthCallbackPage() {
           setTimeout(() => router.replace('/'), 4000);
         }
       } else {
-        setMessage('Invalid authentication callback. Redirecting...');
-        setIsError(true);
-        setTimeout(() => router.replace('/'), 3000);
+        // Handle cases where there's no token but it's not an error from Deriv
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        if (!code) {
+            setMessage('Invalid authentication callback. Redirecting...');
+            setIsError(true);
+            setTimeout(() => router.replace('/'), 3000);
+        }
       }
     };
 
     processAuth();
-    // We only want this to run once on mount, so we pass an empty dependency array.
+    // We only want this to run once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

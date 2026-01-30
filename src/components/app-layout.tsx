@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { Loader2 } from 'lucide-react';
+import Chatbot from '@/components/chatbot/chatbot';
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -115,6 +115,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+      <Chatbot />
     </div>
   );
 }
