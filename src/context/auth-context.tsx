@@ -3,6 +3,77 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { DerivUser, DerivAccount } from '@/lib/types';
 
+// A simplified WebSocket wrapper to mimic DerivAPIBasic
+class DerivAPI {
+  private ws: WebSocket | null = null;
+  private app_id: number;
+  private message_callbacks: Map<number, (response: any) => void> = new Map();
+  private request_id: number = 1;
+  private connection_promise: Promise<void> | null = null;
+
+  constructor({ app_id }: { app_id: number }) {
+    this.app_id = app_id;
+    this.connect();
+  }
+
+  private connect() {
+    this.connection_promise = new Promise((resolve, reject) => {
+        this.ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${this.app_id}`);
+
+        this.ws.onopen = () => {
+            resolve();
+        };
+
+        this.ws.onmessage = (msg) => {
+          try {
+            const data = JSON.parse(msg.data);
+            if (data.req_id && this.message_callbacks.has(data.req_id)) {
+              const callback = this.message_callbacks.get(data.req_id);
+              callback?.(data);
+              this.message_callbacks.delete(data.req_id);
+            }
+          } catch(e) {
+            console.error("Failed to parse WebSocket message:", e)
+          }
+        };
+
+        this.ws.onclose = () => {
+          console.log('Deriv WebSocket disconnected');
+        };
+
+        this.ws.onerror = (err) => {
+          console.error('Deriv WebSocket error:', err);
+          reject(err);
+        };
+    })
+  }
+
+  private async sendRequest(request: object): Promise<any> {
+    await this.connection_promise;
+    
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        throw new Error("WebSocket is not connected.");
+    }
+      
+    return new Promise((resolve) => {
+      const req_id = this.request_id++;
+      this.message_callbacks.set(req_id, resolve);
+      this.ws!.send(JSON.stringify({ ...request, req_id }));
+    });
+  }
+
+  async authorize(token: string) {
+    return this.sendRequest({ authorize: token });
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+    }
+  }
+}
+
+
 interface AuthContextType {
   isLinked: boolean;
   user: DerivUser | null;
@@ -20,45 +91,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DerivUser | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<DerivAccount | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [api, setApi] = useState<DerivAPI | null>(null);
 
-  const verifyToken = useCallback(async (authToken: string) => {
-    setIsLoading(true);
-    // In a real app, you would connect to the Deriv WebSocket API here
-    // and send an 'authorize' request with the token.
-    console.log("Verifying token:", authToken);
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock response for a successful authorization
-    const mockUser: DerivUser = {
-      fullname: 'Real User',
-      email: 'real.user@example.com',
-      loginid: 'CR1234567',
-      account_list: [
-        { loginid: 'CR1234567', is_virtual: 0, currency: 'USD', balance: 2500.50 },
-        { loginid: 'VRTC987654', is_virtual: 1, currency: 'USD', balance: 10000.00 },
-      ],
-      balance: 2500.50, // from the first real account
-      currency: 'USD',
-    };
-
-    // For this prototype, we'll assume the token is valid and set a mock user.
-    // We'll select the first real money account.
-    const realAccount = mockUser.account_list.find(acc => acc.is_virtual === 0);
-    
-    if (realAccount) {
-      setUser(mockUser);
-      setSelectedAccount(realAccount);
-      setToken(authToken);
-      localStorage.setItem('deriv_token', authToken);
-    } else {
-      // Handle case where no real account is found
-      console.error("No real Deriv account found.");
-      logout();
+  useEffect(() => {
+    const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
+    if (!appId) {
+        console.error("Deriv App ID is not configured.");
+        setIsLoading(false);
+        return;
     }
     
-    setIsLoading(false);
+    const derivApi = new DerivAPI({ app_id: Number(appId) });
+    setApi(derivApi);
+
+    return () => {
+      derivApi.disconnect();
+    };
   }, []);
 
   const logout = useCallback(() => {
@@ -69,14 +117,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
+  const verifyToken = useCallback(async (authToken: string) => {
+    if (!api) {
+        setIsLoading(false);
+        return;
+    }
+    setIsLoading(true);
+    
+    try {
+        const authorizeResponse = await api.authorize(authToken);
+        const { authorize, error } = authorizeResponse;
+
+        if (error) {
+            console.error("Deriv API authorization failed:", error.message);
+            logout();
+            return;
+        }
+
+        const fullUser = authorize as DerivUser;
+        const realAccount = fullUser.account_list.find((acc: DerivAccount) => acc.is_virtual === 0);
+
+        if (realAccount) {
+            setUser(fullUser);
+            setSelectedAccount(realAccount);
+            setToken(authToken);
+            localStorage.setItem('deriv_token', authToken);
+        } else {
+            console.error("No real Deriv account found for this user.");
+            logout();
+        }
+
+    } catch (e) {
+        console.error("An error occurred during token verification:", e);
+        logout();
+    } finally {
+        setIsLoading(false);
+    }
+  }, [api, logout]);
+  
   useEffect(() => {
     const storedToken = localStorage.getItem('deriv_token');
     if (storedToken) {
-      verifyToken(storedToken);
+      if (api) {
+        verifyToken(storedToken);
+      }
     } else {
       setIsLoading(false);
     }
-  }, [verifyToken]);
+  }, [api, verifyToken]);
   
   const login = useCallback((authToken: string) => {
     verifyToken(authToken);
@@ -85,7 +173,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateBalance = (newBalance: number) => {
     if (selectedAccount) {
         setSelectedAccount(prev => prev ? { ...prev, balance: newBalance } : null);
-        setUser(prev => prev ? { ...prev, balance: newBalance } : null);
+        if (user && user.loginid === selectedAccount.loginid) {
+            setUser(prev => prev ? { ...prev, balance: newBalance } : null);
+        }
     }
   }
 
