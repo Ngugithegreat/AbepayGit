@@ -7,13 +7,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'API Token is required.' }, { status: 400 });
   }
 
-  // In a real application, you would use the API token to validate the user's Deriv account.
-  // You would also use your payment agent API token from environment variables to perform actions.
-  // const paymentAgentToken = process.env.DERIV_API_TOKEN;
-  // const appId = process.env.DERIV_APP_ID;
+  const paymentAgentToken = process.env.DERIV_API_TOKEN;
+  const appId = process.env.DERIV_APP_ID;
 
-  // This is a mock validation.
-  console.log(`Validating token: ${apiToken}`);
+  console.log(`Using Payment Agent Token (server-side): ${paymentAgentToken}`);
+  console.log(`Using App ID (server-side): ${appId}`);
+  console.log(`Validating User's API Token (from client): ${apiToken}`);
 
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 1500));
