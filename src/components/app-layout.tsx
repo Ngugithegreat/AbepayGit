@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import Chatbot from '@/components/chatbot/chatbot';
-import { Loader2 } from 'lucide-react';
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -19,35 +18,14 @@ const navLinks = [
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { logout, isLinked, isLoading } = useAuth();
+  const { logout } = useAuth();
   const router = useRouter();
-  
-  // This effect protects all routes that use this layout.
-  useEffect(() => {
-    // If the authentication state is not loading and the user is not linked (logged in),
-    // redirect them to the login page.
-    if (!isLoading && !isLinked) {
-      router.replace('/login');
-    }
-  }, [isLoading, isLinked, router]);
 
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
 
-  // While the auth state is loading, or if the user is not linked,
-  // show a loading screen. This prevents a flicker of page content
-  // before the redirect in the useEffect above can happen.
-  if (isLoading || !isLinked) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-900">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-500"/>
-      </div>
-    );
-  }
-
-  // If the user is authenticated, render the main application layout.
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
       <nav className="bg-slate-800 border-b border-slate-700 sticky top-0 z-20">

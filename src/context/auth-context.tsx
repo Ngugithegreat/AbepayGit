@@ -144,7 +144,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) {
             console.error("Deriv API authorization failed:", error.message);
             logout();
-            setIsLoading(false);
             return false;
         }
 
@@ -154,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (realAccount) {
             console.log("Verification successful. User:", fullUser.email);
             
-            // CRITICAL: Set state BEFORE storing in localStorage
+            // Set state before storing in localStorage
             setUser(fullUser);
             setSelectedAccount(realAccount);
             setToken(authToken);
@@ -162,34 +161,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Store token AFTER state is set
             localStorage.setItem('deriv_token', authToken);
             
-            // Set loading to false LAST
-            setIsLoading(false);
             return true;
         } else {
             console.error("No real Deriv account found for this user.");
             logout();
-            setIsLoading(false);
             return false;
         }
 
     } catch (e) {
         console.error("An unexpected error occurred during token verification:", e);
         logout();
-        setIsLoading(false);
         return false;
+    } finally {
+        setIsLoading(false);
     }
   }, [api, logout]);
   
   // On initial load, check for a token in local storage.
   useEffect(() => {
-    const storedToken = localStorage.getItem('deriv_token');
-    if (storedToken && api) {
-        console.log("Found stored token. Verifying session...");
-        verifyToken(storedToken);
-    } else {
-      setIsLoading(false);
-    }
-  }, [api, verifyToken]);
+    const checkStoredToken = async () => {
+        const storedToken = localStorage.getItem('deriv_token');
+        
+        if (storedToken && api) {
+          console.log('📦 Found stored token, verifying...');
+          const isValid = await verifyToken(storedToken);
+          
+          if (!isValid) {
+            console.log('❌ Stored token invalid, clearing...');
+            logout();
+          }
+        } else {
+          console.log('ℹ️ No stored token found');
+          setIsLoading(false);
+        }
+      };
+
+      if (api) {
+        checkStoredToken();
+      }
+  }, [api, verifyToken, logout]);
   
   const login = useCallback(async (authToken: string): Promise<boolean> => {
     return await verifyToken(authToken);
