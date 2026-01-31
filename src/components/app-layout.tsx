@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import Chatbot from '@/components/chatbot/chatbot';
+import { Loader2 } from 'lucide-react';
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -18,14 +19,39 @@ const navLinks = [
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { logout, isLinked, isLoading } = useAuth();
   const router = useRouter();
+  
+  useEffect(() => {
+    console.log('🏗️ AppLayout check:', {
+      pathname,
+      isLoading,
+      isLinked,
+      hasToken: !!localStorage.getItem('deriv_token')
+    });
+    
+    if (!isLoading && !isLinked) {
+      console.log('⚠️ AppLayout: Not linked, redirecting to /login');
+      router.replace('/login');
+    }
+  }, [isLoading, isLinked, router, pathname]);
 
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
 
+  if (isLoading || !isLinked) {
+    console.log('⏳ AppLayout: Showing loader', { isLoading, isLinked });
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-900">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-500"/>
+      </div>
+    );
+  }
+
+  console.log('✅ AppLayout: Rendering main layout');
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
       <nav className="bg-slate-800 border-b border-slate-700 sticky top-0 z-20">

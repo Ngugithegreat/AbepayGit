@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 export default function AuthCallbackPage() {
-  const router = useRouter();
   const [message, setMessage] = useState('Processing authentication...');
   const [error, setError] = useState<string | null>(null);
   const hasProcessed = useRef(false);
@@ -14,61 +12,61 @@ export default function AuthCallbackPage() {
     if (hasProcessed.current) return;
     hasProcessed.current = true;
 
-    const processAuth = async () => {
+    const processAuth = () => {
       try {
+        console.log('🔥 CALLBACK STARTED');
+        console.log('📍 Current URL:', window.location.href);
+        console.log('🔗 Hash:', window.location.hash);
+        
         const hash = window.location.hash.substring(1);
         const hashParams = new URLSearchParams(hash);
         const token = hashParams.get('token');
         const callbackError = hashParams.get('error');
 
-        console.log('🔐 Callback received:', { hasToken: !!token, hasError: !!callbackError });
-
-        // Clean URL immediately
-        window.history.replaceState(null, '', window.location.pathname);
+        console.log('🎫 Token exists:', !!token);
+        console.log('❌ Error exists:', !!callbackError);
 
         if (callbackError) {
-          console.error('❌ Auth error:', callbackError);
+          console.error('💥 Deriv error:', callbackError);
           setError(callbackError);
-          setMessage('Authentication failed');
-          setTimeout(() => router.replace('/login'), 2000);
+          setMessage('Authentication failed: ' + callbackError);
           return;
         }
 
         if (!token) {
-          console.error('❌ No token found');
-          setError('No token');
+          console.error('💥 No token in URL');
+          setError('No token found');
           setMessage('No authentication token found');
-          setTimeout(() => router.replace('/login'), 2000);
           return;
         }
 
-        console.log('💾 Storing token directly...');
+        console.log('💾 Saving token to localStorage...');
+        console.log('🔑 Token (first 20 chars):', token.substring(0, 20) + '...');
         
-        // CRITICAL: Store token IMMEDIATELY in localStorage
-        // Don't wait for any auth context or verification
+        // Save token
         localStorage.setItem('deriv_token', token);
         
-        setMessage('Token saved! Redirecting...');
+        // Verify it was saved
+        const saved = localStorage.getItem('deriv_token');
+        console.log('✅ Token saved?', saved === token);
         
-        // Wait a moment for localStorage to persist
-        await new Promise(resolve => setTimeout(resolve, 100));
+        setMessage('Token saved! Redirecting in 2 seconds...');
         
-        console.log('✅ Token stored, redirecting to dashboard');
-        
-        // Redirect to dashboard
-        // The dashboard's layout will verify the token
-        window.location.href = '/dashboard';
+        // Hard redirect after 2 seconds
+        setTimeout(() => {
+          console.log('🚀 Redirecting to /dashboard');
+          window.location.href = '/dashboard';
+        }, 2000);
         
       } catch (e: any) {
-        console.error('❌ Callback error:', e);
+        console.error('💥 CALLBACK ERROR:', e);
         setError(e.message);
-        setMessage('Authentication error');
-        setTimeout(() => router.replace('/login'), 2000);
+        setMessage('Error: ' + e.message);
       }
     };
 
     processAuth();
-  }, [router]);
+  }, []);
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center bg-slate-900">
@@ -76,7 +74,20 @@ export default function AuthCallbackPage() {
         {!error && <Loader2 className="h-6 w-6 animate-spin" />}
         <span className="text-lg">{message}</span>
       </div>
-      {error && <p className="text-sm text-slate-500">Error: {error}</p>}
+      {error && (
+        <div className="text-sm text-slate-500 space-y-2">
+          <p>Error: {error}</p>
+          <button
+            onClick={() => window.location.href = '/login'}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+          >
+            Back to Login
+          </button>
+        </div>
+      )}
+      <div className="mt-4 text-xs text-slate-600 max-w-md">
+        <p>Check your browser console (F12) for detailed logs</p>
+      </div>
     </div>
   );
 }
