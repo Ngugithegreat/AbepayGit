@@ -1,29 +1,28 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/auth-context';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const { login } = useAuth();
-  const [message, setMessage] = useState('Finalizing authentication...');
+  const [message, setMessage] = useState('Finalizing authentication, please wait...');
   const [error, setError] = useState<string | null>(null);
   const hasProcessed = useRef(false);
 
   useEffect(() => {
+    // Prevent this effect from running multiple times in strict mode
     if (hasProcessed.current) return;
     hasProcessed.current = true;
 
-    const processAuth = async () => {
+    const processAuth = () => {
       try {
         const hash = window.location.hash.substring(1);
         const hashParams = new URLSearchParams(hash);
         const token = hashParams.get('token');
         const callbackError = hashParams.get('error');
 
-        // Clean the URL hash immediately.
+        // Immediately clean the URL for security
         window.history.replaceState(null, '', window.location.pathname);
 
         if (callbackError) {
@@ -40,22 +39,16 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        // Use the auth context to perform the login.
-        // This will verify the token and update the global auth state.
-        setMessage('Verifying your account details...');
-        const loginSuccess = await login(token);
+        // The critical step: save the token directly to local storage.
+        localStorage.setItem('deriv_token', token);
 
-        if (loginSuccess) {
-          setMessage('Authentication successful! Redirecting to your dashboard...');
-          // Redirect to the dashboard. The protected layout will now see the correct auth state.
-          router.replace('/dashboard');
-        } else {
-          setError('Failed to verify your account with Deriv.');
-          setMessage('Could not verify your account. Please try logging in again.');
-          setTimeout(() => router.replace('/login'), 3000);
-        }
+        // Perform a hard redirect to the dashboard.
+        // This ensures a clean state and forces the AuthProvider to initialize
+        // by reading the newly stored token.
+        setMessage('Authentication successful! Redirecting to your dashboard...');
+        window.location.href = '/dashboard';
+        
       } catch (e: any) {
-        console.error('Auth callback error:', e);
         setError('An unexpected error occurred during authentication.');
         setMessage('Authentication error. Redirecting to login...');
         setTimeout(() => router.replace('/login'), 3000);
@@ -63,7 +56,7 @@ export default function AuthCallbackPage() {
     };
 
     processAuth();
-  }, [login, router]);
+  }, [router]);
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center bg-slate-900">
