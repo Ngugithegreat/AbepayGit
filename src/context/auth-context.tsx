@@ -3,11 +3,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { DerivUser, DerivAccount } from '@/lib/types';
 
-// A simplified WebSocket wrapper to mimic DerivAPIBasic
+// A more robust WebSocket wrapper for Deriv API
 class DerivAPI {
   private ws: WebSocket | null = null;
   private app_id: number;
-  private message_callbacks: Map<number, (response: any) => void> = new Map();
+  private message_callbacks: Map<number, { resolve: (value: any) => void; reject: (reason?: any) => void; }> = new Map();
   private request_id: number = 1;
   private connection_promise: Promise<void> | null = null;
 
@@ -17,8 +17,7 @@ class DerivAPI {
 
   private connect() {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.connection_promise = Promise.resolve();
-        return;
+      if (this.connection_promise) return this.connection_promise;
     }
     
     this.connection_promise = new Promise((resolve, reject) => {
@@ -34,7 +33,7 @@ class DerivAPI {
             const data = JSON.parse(msg.data);
             if (data.req_id && this.message_callbacks.has(data.req_id)) {
               const callback = this.message_callbacks.get(data.req_id);
-              callback?.(data);
+              callback?.resolve(data);
               this.message_callbacks.delete(data.req_id);
             }
           } catch(e) {
@@ -44,33 +43,53 @@ class DerivAPI {
 
         this.ws.onclose = () => {
           console.log('Deriv WebSocket disconnected');
-          this.ws = null; // Clear instance on close
+          this.ws = null;
+          this.connection_promise = null;
+          // Reject any pending requests
+          this.message_callbacks.forEach((callback) => {
+            callback.reject(new Error("WebSocket disconnected."));
+          });
+          this.message_callbacks.clear();
         };
 
         this.ws.onerror = (err) => {
           console.error('Deriv WebSocket error:', err);
           this.ws = null;
+          this.connection_promise = null;
           reject(err);
         };
     });
+    return this.connection_promise;
   }
 
   public async sendRequest(request: object): Promise<any> {
-    if (!this.connection_promise || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        console.log("No active connection, connecting...");
-        this.connect();
-    }
-    
-    await this.connection_promise;
+    await this.connect();
     
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error("WebSocket connection failed.");
+      throw new Error("WebSocket connection failed or not open.");
     }
       
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const req_id = this.request_id++;
-      this.message_callbacks.set(req_id, resolve);
-      this.ws!.send(JSON.stringify({ ...request, req_id }));
+
+      // Timeout to prevent requests from hanging forever
+      const timeout = setTimeout(() => {
+        this.message_callbacks.delete(req_id);
+        reject(new Error(`Deriv API request timed out after 10 seconds.`));
+      }, 10000);
+
+      this.message_callbacks.set(req_id, {
+          resolve: (response) => {
+              clearTimeout(timeout);
+              resolve(response);
+          },
+          reject: (error) => {
+              clearTimeout(timeout);
+              reject(error);
+          }
+      });
+      
+      this.ws.send(JSON.stringify({ ...request, req_id }));
     });
   }
 
@@ -153,12 +172,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (realAccount) {
             console.log("Verification successful. User:", fullUser.email);
             
-            // Set state before storing in localStorage
             setUser(fullUser);
             setSelectedAccount(realAccount);
             setToken(authToken);
             
-            // Store token AFTER state is set
+            // We already have the token, this confirms it's valid
             localStorage.setItem('deriv_token', authToken);
             
             return true;
@@ -177,7 +195,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [api, logout]);
   
-  // On initial load, check for a token in local storage.
   useEffect(() => {
     const checkStoredToken = async () => {
         const storedToken = localStorage.getItem('deriv_token');
@@ -191,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             logout();
           }
         } else {
-          console.log('ℹ️ No stored token found');
+          console.log('ℹ️ No stored token found, setting isLoading to false.');
           setIsLoading(false);
         }
       };
