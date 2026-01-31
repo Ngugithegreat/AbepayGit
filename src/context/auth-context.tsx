@@ -3,108 +3,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { DerivUser, DerivAccount } from '@/lib/types';
 
-// A more robust WebSocket wrapper for Deriv API
-class DerivAPI {
-  private ws: WebSocket | null = null;
-  private app_id: number;
-  private message_callbacks: Map<number, { resolve: (value: any) => void; reject: (reason?: any) => void; }> = new Map();
-  private request_id: number = 1;
-  private connection_promise: Promise<void> | null = null;
-
-  constructor({ app_id }: { app_id: number }) {
-    this.app_id = app_id;
-  }
-
-  private connect() {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      if (this.connection_promise) return this.connection_promise;
-    }
-    
-    this.connection_promise = new Promise((resolve, reject) => {
-        this.ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${this.app_id}`);
-
-        this.ws.onopen = () => {
-            console.log("Deriv WebSocket connected.");
-            resolve();
-        };
-
-        this.ws.onmessage = (msg) => {
-          try {
-            const data = JSON.parse(msg.data);
-            if (data.req_id && this.message_callbacks.has(data.req_id)) {
-              const callback = this.message_callbacks.get(data.req_id);
-              callback?.resolve(data);
-              this.message_callbacks.delete(data.req_id);
-            }
-          } catch(e) {
-            console.error("Failed to parse WebSocket message:", e)
-          }
-        };
-
-        this.ws.onclose = () => {
-          console.log('Deriv WebSocket disconnected');
-          this.ws = null;
-          this.connection_promise = null;
-          // Reject any pending requests
-          this.message_callbacks.forEach((callback) => {
-            callback.reject(new Error("WebSocket disconnected."));
-          });
-          this.message_callbacks.clear();
-        };
-
-        this.ws.onerror = (err) => {
-          console.error('Deriv WebSocket error:', err);
-          this.ws = null;
-          this.connection_promise = null;
-          reject(err);
-        };
-    });
-    return this.connection_promise;
-  }
-
-  public async sendRequest(request: object): Promise<any> {
-    await this.connect();
-    
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error("WebSocket connection failed or not open.");
-    }
-      
-    return new Promise((resolve, reject) => {
-      const req_id = this.request_id++;
-
-      // Timeout to prevent requests from hanging forever
-      const timeout = setTimeout(() => {
-        this.message_callbacks.delete(req_id);
-        reject(new Error(`Deriv API request timed out after 10 seconds.`));
-      }, 10000);
-
-      this.message_callbacks.set(req_id, {
-          resolve: (response) => {
-              clearTimeout(timeout);
-              resolve(response);
-          },
-          reject: (error) => {
-              clearTimeout(timeout);
-              reject(error);
-          }
-      });
-      
-      this.ws.send(JSON.stringify({ ...request, req_id }));
-    });
-  }
-
-  async authorize(token: string) {
-    return this.sendRequest({ authorize: token });
-  }
-
-  disconnect() {
-    if (this.ws) {
-      this.ws.close();
-    }
-  }
-}
-
-
 interface AuthContextType {
   isLinked: boolean;
   user: DerivUser | null;
@@ -122,23 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DerivUser | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<DerivAccount | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [api, setApi] = useState<DerivAPI | null>(null);
-
-  useEffect(() => {
-    const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
-    if (!appId) {
-        console.error("Deriv App ID is not configured.");
-        setIsLoading(false);
-        return;
-    }
-    
-    const derivApi = new DerivAPI({ app_id: Number(appId) });
-    setApi(derivApi);
-
-    return () => {
-      derivApi.disconnect();
-    };
-  }, []);
+  const [api, setApi] = useState<any | null>(null);
 
   const logout = useCallback(() => {
     console.log("Logging out and clearing session.");
@@ -151,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifyToken = useCallback(async (authToken: string): Promise<boolean> => {
     if (!api) {
         console.error("API not initialized yet.");
+        setIsLoading(false);
         return false;
     }
     setIsLoading(true);
@@ -158,6 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
         console.log("Verifying token with Deriv...");
         const authorizeResponse = await api.authorize(authToken);
+
+        if (!authorizeResponse) {
+          console.error("No response from Deriv API during authorization.");
+          logout();
+          return false;
+        }
+
         const { authorize, error } = authorizeResponse;
 
         if (error) {
@@ -176,7 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSelectedAccount(realAccount);
             setToken(authToken);
             
-            // We already have the token, this confirms it's valid
             localStorage.setItem('deriv_token', authToken);
             
             return true;
@@ -186,8 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return false;
         }
 
-    } catch (e) {
-        console.error("An unexpected error occurred during token verification:", e);
+    } catch (e: any) {
+        console.error("An unexpected error occurred during token verification:", e.message);
         logout();
         return false;
     } finally {
@@ -195,6 +84,120 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [api, logout]);
   
+  useEffect(() => {
+    class DerivAPI {
+      private ws: WebSocket | null = null;
+      private app_id: number;
+      private message_callbacks: Map<number, { resolve: (value: any) => void; reject: (reason?: any) => void; }> = new Map();
+      private request_id: number = 1;
+      private connection_promise: Promise<void> | null = null;
+
+      constructor({ app_id }: { app_id: number }) {
+        this.app_id = app_id;
+      }
+
+      private connect() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          if (this.connection_promise) return this.connection_promise;
+        }
+        
+        this.connection_promise = new Promise((resolve, reject) => {
+            this.ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${this.app_id}`);
+
+            this.ws.onopen = () => {
+                console.log("Deriv WebSocket connected.");
+                resolve();
+            };
+
+            this.ws.onmessage = (msg) => {
+              try {
+                const data = JSON.parse(msg.data);
+                if (data.req_id && this.message_callbacks.has(data.req_id)) {
+                  const callback = this.message_callbacks.get(data.req_id);
+                  callback?.resolve(data);
+                  this.message_callbacks.delete(data.req_id);
+                }
+              } catch(e) {
+                console.error("Failed to parse WebSocket message:", e)
+              }
+            };
+
+            this.ws.onclose = () => {
+              console.log('Deriv WebSocket disconnected');
+              this.ws = null;
+              this.connection_promise = null;
+              this.message_callbacks.forEach((callback) => {
+                callback.reject(new Error("WebSocket disconnected."));
+              });
+              this.message_callbacks.clear();
+            };
+
+            this.ws.onerror = (err) => {
+              console.error('Deriv WebSocket error:', err);
+              this.ws = null;
+              this.connection_promise = null;
+              reject(err);
+            };
+        });
+        return this.connection_promise;
+      }
+
+      public async sendRequest(request: object): Promise<any> {
+        await this.connect();
+        
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+          throw new Error("WebSocket connection failed or not open.");
+        }
+          
+        return new Promise((resolve, reject) => {
+          const req_id = this.request_id++;
+
+          const timeout = setTimeout(() => {
+            this.message_callbacks.delete(req_id);
+            reject(new Error(`Deriv API request timed out after 10 seconds.`));
+          }, 10000);
+
+          this.message_callbacks.set(req_id, {
+              resolve: (response) => {
+                  clearTimeout(timeout);
+                  resolve(response);
+              },
+              reject: (error) => {
+                  clearTimeout(timeout);
+                  reject(error);
+              }
+          });
+          
+          this.ws.send(JSON.stringify({ ...request, req_id }));
+        });
+      }
+
+      async authorize(token: string) {
+        return this.sendRequest({ authorize: token });
+      }
+
+      disconnect() {
+        if (this.ws) {
+          this.ws.close();
+        }
+      }
+    }
+
+    const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
+    if (!appId) {
+        console.error("Deriv App ID is not configured.");
+        setIsLoading(false);
+        return;
+    }
+    
+    const derivApi = new DerivAPI({ app_id: Number(appId) });
+    setApi(derivApi);
+
+    return () => {
+      derivApi.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     const checkStoredToken = async () => {
         const storedToken = localStorage.getItem('deriv_token');
@@ -207,7 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log('❌ Stored token invalid, clearing...');
             logout();
           }
-        } else {
+        } else if (!storedToken) {
           console.log('ℹ️ No stored token found, setting isLoading to false.');
           setIsLoading(false);
         }
