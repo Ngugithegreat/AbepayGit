@@ -36,7 +36,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
         return false;
     }
-    setIsLoading(true);
     
     try {
         console.log("Verifying token with Deriv...");
@@ -190,20 +189,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
     }
     
-    const derivApi = new DerivAPI({ app_id: Number(appId) });
-    setApi(derivApi);
+    if (typeof window !== 'undefined') {
+        const derivApi = new DerivAPI({ app_id: Number(appId) });
+        setApi(derivApi);
 
-    return () => {
-      derivApi.disconnect();
-    };
+        return () => {
+          derivApi.disconnect();
+        };
+    }
   }, []);
 
   useEffect(() => {
     const checkStoredToken = async () => {
+        // If a user object already exists in state, we don't need to re-verify.
+        if (user) {
+            setIsLoading(false);
+            return;
+        }
+      
         const storedToken = localStorage.getItem('deriv_token');
         
         if (storedToken && api) {
           console.log('📦 Found stored token, verifying...');
+          setIsLoading(true);
           const isValid = await verifyToken(storedToken);
           
           if (!isValid) {
@@ -219,9 +227,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (api) {
         checkStoredToken();
       }
-  }, [api, verifyToken, logout]);
+  }, [api, user, verifyToken, logout]);
   
   const login = useCallback(async (authToken: string): Promise<boolean> => {
+    setIsLoading(true);
     return await verifyToken(authToken);
   }, [verifyToken]);
 
