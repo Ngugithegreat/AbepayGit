@@ -3,17 +3,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { DerivUser, DerivAccount } from '@/lib/types';
 
-interface AuthContextType {
-  isLinked: boolean;
-  user: DerivUser | null;
-  selectedAccount: DerivAccount | null;
-  isLoading: boolean;
-  logout: () => void;
-  updateBalance: (newBalance: number) => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 class DerivAPI {
   private ws: WebSocket | null = null;
   private app_id: number;
@@ -32,7 +21,10 @@ class DerivAPI {
     
     this.connection_promise = new Promise((resolve, reject) => {
         this.ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${this.app_id}`);
-        this.ws.onopen = () => resolve();
+        this.ws.onopen = () => {
+          console.log("✅ Deriv WebSocket connected.");
+          resolve();
+        };
         this.ws.onmessage = (msg) => {
           try {
             const data = JSON.parse(msg.data);
@@ -50,12 +42,14 @@ class DerivAPI {
           }
         };
         this.ws.onclose = () => {
+          console.log('Deriv WebSocket disconnected');
           this.ws = null;
           this.connection_promise = null;
           this.message_callbacks.forEach((cb) => cb.reject(new Error("WebSocket disconnected.")));
           this.message_callbacks.clear();
         };
         this.ws.onerror = (err) => {
+          console.error('Deriv WebSocket error:', err);
           this.ws = null;
           this.connection_promise = null;
           reject(err);
@@ -95,67 +89,99 @@ class DerivAPI {
   }
 }
 
+interface AuthContextType {
+  isLinked: boolean;
+  user: DerivUser | null;
+  selectedAccount: DerivAccount | null;
+  isLoading: boolean;
+  logout: () => void;
+  updateBalance: (newBalance: number) => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DerivUser | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<DerivAccount | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isVerifying, setIsVerifying] = useState(false);
+  
+  // CRITICAL: Prevent multiple simultaneous verifications
+  const isVerifying = useRef(false);
   const [api, setApi] = useState<DerivAPI | null>(null);
 
   useEffect(() => {
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
     if (!appId) {
-      console.error("Deriv App ID is not configured.");
-      setIsLoading(false);
-      return;
+        console.error("❌ Deriv App ID is not configured.");
+        setIsLoading(false);
+        return;
     }
+    
     const derivApi = new DerivAPI({ app_id: Number(appId) });
     setApi(derivApi);
-    return () => derivApi.disconnect();
+
+    return () => {
+      derivApi.disconnect();
+    };
   }, []);
 
   const logout = useCallback(() => {
+    console.log("🚪 Logging out and clearing session.");
     localStorage.removeItem('deriv_token');
     setUser(null);
     setSelectedAccount(null);
+    isVerifying.current = false;
   }, []);
-
-  const verifyToken = useCallback(async (authToken: string): Promise<boolean> => {
-    if (isVerifying || !api) return false;
-    
-    setIsVerifying(true);
-
-    try {
-        const { authorize, error } = await api.authorize(authToken);
-        if (error) {
-            console.error("Deriv API authorization failed:", error.message);
-            logout();
-            return false;
-        }
-
-        const fullUser = authorize as DerivUser;
-        const realAccount = fullUser.account_list.find((acc: DerivAccount) => acc.is_virtual === 0);
-
-        if (realAccount) {
-            setUser(fullUser);
-            setSelectedAccount(realAccount);
-            return true;
-        } else {
-            console.error("No real Deriv account found for this user.");
-            logout();
-            return false;
-        }
-    } catch (e) {
-        console.error("An unexpected error occurred during token verification:", e);
-        logout();
-        return false;
-    } finally {
-        setIsVerifying(false);
-        setIsLoading(false);
-    }
-  }, [api, logout, isVerifying]);
   
+  // On initial load, check for a token in local storage
   useEffect(() => {
+    // Don't run if the API isn't ready yet.
+    if (!api) return;
+
+    // This ref is a lock to prevent this effect from running multiple times
+    // during development due to React's Strict Mode.
+    if (isVerifying.current) {
+        console.log("⚠️ Already verifying, skipping initial check...");
+        return
+    };
+
+    const verifyToken = async (authToken: string): Promise<boolean> => {
+        isVerifying.current = true;
+        setIsLoading(true);
+
+        try {
+            console.log("🔐 Verifying token with Deriv...");
+            const { authorize, error } = await api.authorize(authToken);
+
+            if (error) {
+                console.error("❌ Deriv API authorization failed:", error.message);
+                logout();
+                return false;
+            }
+
+            const fullUser = authorize as DerivUser;
+            const realAccount = fullUser.account_list.find((acc: DerivAccount) => acc.is_virtual === 0);
+
+            if (realAccount) {
+                console.log("✅ Verification successful. User:", fullUser.email);
+                setUser(fullUser);
+                setSelectedAccount(realAccount);
+                return true;
+            } else {
+                console.error("❌ No real Deriv account found for this user.");
+                logout();
+                return false;
+            }
+        } catch (e) {
+            console.error("❌ Unexpected error during token verification:", e);
+            logout();
+            return false;
+        } finally {
+            isVerifying.current = false;
+            setIsLoading(false);
+        }
+    };
+    
     const checkStoredToken = async () => {
       // If a user object already exists, we are authenticated.
       if (user) {
@@ -164,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     
       const storedToken = localStorage.getItem('deriv_token');
-      if (storedToken && api) {
+      if (storedToken) {
         await verifyToken(storedToken);
       } else {
         // If there's no token, we are done loading.
@@ -173,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     
     checkStoredToken();
-  }, [api, user, verifyToken]);
+  }, [api, logout, user]);
   
   const updateBalance = (newBalance: number) => {
     if (selectedAccount) {
@@ -182,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const value = {
-    isLinked: !!user,
+    isLinked: !!user && !isLoading,
     user,
     selectedAccount,
     isLoading,
