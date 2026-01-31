@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { DerivUser, DerivAccount } from '@/lib/types';
 
 interface AuthContextType {
@@ -8,164 +8,127 @@ interface AuthContextType {
   user: DerivUser | null;
   selectedAccount: DerivAccount | null;
   isLoading: boolean;
-  login: (token: string) => Promise<boolean>;
   logout: () => void;
-  updateBalance: (newBalance: number) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+class DerivAPI {
+  private ws: WebSocket | null = null;
+  private app_id: number;
+  private message_callbacks: Map<number, { resolve: (value: any) => void; reject: (reason?: any) => void; }> = new Map();
+  private request_id: number = 1;
+  private connection_promise: Promise<void> | null = null;
+
+  constructor({ app_id }: { app_id: number }) {
+    this.app_id = app_id;
+  }
+
+  private connect() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      if (this.connection_promise) return this.connection_promise;
+    }
+    
+    this.connection_promise = new Promise((resolve, reject) => {
+        this.ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${this.app_id}`);
+        this.ws.onopen = () => resolve();
+        this.ws.onmessage = (msg) => {
+          try {
+            const data = JSON.parse(msg.data);
+            if (data.req_id && this.message_callbacks.has(data.req_id)) {
+              const callback = this.message_callbacks.get(data.req_id);
+              if (data.error) {
+                callback?.reject(data.error);
+              } else {
+                callback?.resolve(data);
+              }
+              this.message_callbacks.delete(data.req_id);
+            }
+          } catch(e) {
+            console.error("Failed to parse WebSocket message:", e)
+          }
+        };
+        this.ws.onclose = () => {
+          this.ws = null;
+          this.connection_promise = null;
+          this.message_callbacks.forEach((cb) => cb.reject(new Error("WebSocket disconnected.")));
+          this.message_callbacks.clear();
+        };
+        this.ws.onerror = (err) => {
+          this.ws = null;
+          this.connection_promise = null;
+          reject(err);
+        };
+    });
+    return this.connection_promise;
+  }
+
+  public async sendRequest(request: object, timeoutMs: number = 10000): Promise<any> {
+    await this.connect();
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) throw new Error("WebSocket connection failed.");
+    
+    return new Promise((resolve, reject) => {
+      const req_id = this.request_id++;
+      const timeout = setTimeout(() => {
+        this.message_callbacks.delete(req_id);
+        reject(new Error(`Deriv API request timed out after ${timeoutMs / 1000} seconds.`));
+      }, timeoutMs);
+
+      this.message_callbacks.set(req_id, {
+          resolve: (response) => { clearTimeout(timeout); resolve(response); },
+          reject: (error) => { clearTimeout(timeout); reject(error); }
+      });
+      
+      this.ws.send(JSON.stringify({ ...request, req_id }));
+    });
+  }
+
+  async authorize(token: string) {
+    return this.sendRequest({ authorize: token });
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+    }
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<DerivUser | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<DerivAccount | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [api, setApi] = useState<any | null>(null);
+  const [api, setApi] = useState<DerivAPI | null>(null);
+  
+  // This ref ensures verification only runs ONCE per page load.
+  const hasVerified = useRef(false);
 
-  // Initialize the Deriv API WebSocket connection
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    class DerivAPI {
-      private ws: WebSocket | null = null;
-      private app_id: number;
-      private message_callbacks: Map<number, { resolve: (value: any) => void; reject: (reason?: any) => void; }> = new Map();
-      private request_id: number = 1;
-      private connection_promise: Promise<void> | null = null;
-
-      constructor({ app_id }: { app_id: number }) {
-        this.app_id = app_id;
-      }
-
-      private connect() {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          if (this.connection_promise) return this.connection_promise;
-        }
-        
-        this.connection_promise = new Promise((resolve, reject) => {
-            this.ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${this.app_id}`);
-
-            this.ws.onopen = () => {
-                console.log("Deriv WebSocket connected.");
-                resolve();
-            };
-
-            this.ws.onmessage = (msg) => {
-              try {
-                const data = JSON.parse(msg.data);
-                if (data.req_id && this.message_callbacks.has(data.req_id)) {
-                  const callback = this.message_callbacks.get(data.req_id);
-                  callback?.resolve(data);
-                  this.message_callbacks.delete(data.req_id);
-                }
-              } catch(e) {
-                console.error("Failed to parse WebSocket message:", e)
-              }
-            };
-
-            this.ws.onclose = () => {
-              console.log('Deriv WebSocket disconnected');
-              this.ws = null;
-              this.connection_promise = null;
-              this.message_callbacks.forEach((callback) => {
-                callback.reject(new Error("WebSocket disconnected."));
-              });
-              this.message_callbacks.clear();
-            };
-
-            this.ws.onerror = (err) => {
-              console.error('Deriv WebSocket error:', err);
-              this.ws = null;
-              this.connection_promise = null;
-              reject(err);
-            };
-        });
-        return this.connection_promise;
-      }
-
-      public async sendRequest(request: object): Promise<any> {
-        await this.connect();
-        
-        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-          throw new Error("WebSocket connection failed or not open.");
-        }
-          
-        return new Promise((resolve, reject) => {
-          const req_id = this.request_id++;
-
-          const timeout = setTimeout(() => {
-            this.message_callbacks.delete(req_id);
-            reject(new Error(`Deriv API request timed out after 10 seconds.`));
-          }, 10000);
-
-          this.message_callbacks.set(req_id, {
-              resolve: (response) => {
-                  clearTimeout(timeout);
-                  resolve(response);
-              },
-              reject: (error) => {
-                  clearTimeout(timeout);
-                  reject(error);
-              }
-          });
-          
-          this.ws.send(JSON.stringify({ ...request, req_id }));
-        });
-      }
-
-      async authorize(token: string) {
-        return this.sendRequest({ authorize: token });
-      }
-
-      disconnect() {
-        if (this.ws) {
-          this.ws.close();
-        }
-      }
-    }
-
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
     if (!appId) {
-        console.error("Deriv App ID is not configured.");
-        setIsLoading(false);
-        return;
+      console.error("Deriv App ID is not configured.");
+      setIsLoading(false);
+      return;
     }
-    
     const derivApi = new DerivAPI({ app_id: Number(appId) });
     setApi(derivApi);
-
-    return () => {
-      derivApi.disconnect();
-    };
+    return () => derivApi.disconnect();
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem('deriv_token');
-    setToken(null);
     setUser(null);
     setSelectedAccount(null);
+    // After logout, let the protected layout handle the redirect.
   }, []);
 
   const verifyToken = useCallback(async (authToken: string): Promise<boolean> => {
-    if (!api) {
-        setIsLoading(false);
-        return false;
-    }
+    if (!api) return false;
     
     try {
-        setIsLoading(true);
-        const authorizeResponse = await api.authorize(authToken);
-
-        if (!authorizeResponse) {
-          logout();
-          return false;
-        }
-
-        const { authorize, error } = authorizeResponse;
-
+        const { authorize, error } = await api.authorize(authToken);
         if (error) {
+            console.error("Deriv API authorization failed:", error.message);
             logout();
             return false;
         }
@@ -176,67 +139,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (realAccount) {
             setUser(fullUser);
             setSelectedAccount(realAccount);
-            setToken(authToken);
-            localStorage.setItem('deriv_token', authToken);
             return true;
         } else {
+            console.error("No real Deriv account found for this user.");
             logout();
             return false;
         }
-    } catch (e: any) {
+    } catch (e) {
+        console.error("An unexpected error occurred during token verification:", e);
         logout();
         return false;
-    } finally {
-        setIsLoading(false);
     }
   }, [api, logout]);
   
   useEffect(() => {
-    if (typeof window === 'undefined' || !api) {
-        return;
-    }
-      
     const checkStoredToken = async () => {
-        if (user) {
-            setIsLoading(false);
-            return;
-        }
-      
-        const storedToken = localStorage.getItem('deriv_token');
-        
-        if (storedToken) {
-          const isValid = await verifyToken(storedToken);
-          
-          if (!isValid) {
-            localStorage.removeItem('deriv_token');
-          }
-        } else {
-          setIsLoading(false);
-        }
+      // Safeguard: Only run verification logic once per component lifecycle.
+      if (hasVerified.current) return;
+      hasVerified.current = true;
+
+      // If user is already in state, we are good.
+      if (user) {
+        setIsLoading(false);
+        return;
+      }
+    
+      const storedToken = localStorage.getItem('deriv_token');
+      if (storedToken && api) {
+        await verifyToken(storedToken);
+      }
+      // Always set loading to false after the check.
+      setIsLoading(false);
     };
     
     checkStoredToken();
-  }, [api]);
+  }, [api, user, verifyToken]);
   
-  const login = useCallback(async (authToken: string): Promise<boolean> => {
-    return await verifyToken(authToken);
-  }, [verifyToken]);
-
   const updateBalance = (newBalance: number) => {
     if (selectedAccount) {
-        setSelectedAccount(prev => prev ? { ...prev, balance: newBalance } : null);
-        if (user && user.loginid === selectedAccount.loginid) {
-            setUser(prev => prev ? { ...prev, balance: newBalance } : null);
-        }
+      setSelectedAccount(prev => prev ? { ...prev, balance: newBalance } : null);
     }
   }
 
   const value = {
-    isLinked: !!user && !isLoading,
+    isLinked: !!user, // isLinked is simply whether a user object exists.
     user,
     selectedAccount,
     isLoading,
-    login,
     logout,
     updateBalance,
   };

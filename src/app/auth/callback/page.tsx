@@ -2,16 +2,14 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 export default function AuthCallbackPage() {
-  const router = useRouter();
-  const [message, setMessage] = useState('Finalizing authentication, please wait...');
+  const [message, setMessage] = useState('Finalizing authentication...');
   const [error, setError] = useState<string | null>(null);
   const hasProcessed = useRef(false);
 
   useEffect(() => {
-    // Prevent this effect from running multiple times in strict mode
+    // This ref ensures the logic runs only once, even in React's Strict Mode.
     if (hasProcessed.current) return;
     hasProcessed.current = true;
 
@@ -27,36 +25,36 @@ export default function AuthCallbackPage() {
 
         if (callbackError) {
           setError(`Authentication failed: ${callbackError}`);
-          setMessage('Authentication failed. Redirecting to login...');
-          setTimeout(() => router.replace('/login'), 3000);
+          setMessage('Authentication failed. Please try logging in again.');
+          // No automatic redirect on error, let the user see the message.
           return;
         }
 
         if (!token) {
-          setError('No authentication token found in callback.');
-          setMessage('Invalid authentication callback. Redirecting to login...');
-          setTimeout(() => router.replace('/login'), 3000);
+          setError('No authentication token found in the URL.');
+          setMessage('Invalid authentication callback.');
           return;
         }
 
-        // The critical step: save the token directly to local storage.
+        // CRITICAL: Directly save the token to localStorage.
+        // The AuthProvider on the next page will handle verification.
         localStorage.setItem('deriv_token', token);
+        
+        setMessage('Success! Redirecting to your dashboard...');
 
         // Perform a hard redirect to the dashboard.
-        // This ensures a clean state and forces the AuthProvider to initialize
-        // by reading the newly stored token.
-        setMessage('Authentication successful! Redirecting to your dashboard...');
+        // This forces a clean reload, ensuring the AuthProvider
+        // runs its verification logic from a clean state.
         window.location.href = '/dashboard';
         
       } catch (e: any) {
         setError('An unexpected error occurred during authentication.');
-        setMessage('Authentication error. Redirecting to login...');
-        setTimeout(() => router.replace('/login'), 3000);
+        setMessage('An error occurred. Please try again.');
       }
     };
 
     processAuth();
-  }, [router]);
+  }, []);
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center bg-slate-900">
