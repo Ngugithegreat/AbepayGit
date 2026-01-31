@@ -9,6 +9,7 @@ interface AuthContextType {
   selectedAccount: DerivAccount | null;
   isLoading: boolean;
   logout: () => void;
+  updateBalance: (newBalance: number) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -98,10 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DerivUser | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<DerivAccount | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [api, setApi] = useState<DerivAPI | null>(null);
-  
-  // This ref ensures verification only runs ONCE per page load.
-  const hasVerified = useRef(false);
 
   useEffect(() => {
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
@@ -119,12 +118,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('deriv_token');
     setUser(null);
     setSelectedAccount(null);
-    // After logout, let the protected layout handle the redirect.
   }, []);
 
   const verifyToken = useCallback(async (authToken: string): Promise<boolean> => {
-    if (!api) return false;
+    if (isVerifying || !api) return false;
     
+    setIsVerifying(true);
+
     try {
         const { authorize, error } = await api.authorize(authToken);
         if (error) {
@@ -149,16 +149,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("An unexpected error occurred during token verification:", e);
         logout();
         return false;
+    } finally {
+        setIsVerifying(false);
+        setIsLoading(false);
     }
-  }, [api, logout]);
+  }, [api, logout, isVerifying]);
   
   useEffect(() => {
     const checkStoredToken = async () => {
-      // Safeguard: Only run verification logic once per component lifecycle.
-      if (hasVerified.current) return;
-      hasVerified.current = true;
-
-      // If user is already in state, we are good.
+      // If a user object already exists, we are authenticated.
       if (user) {
         setIsLoading(false);
         return;
@@ -167,9 +166,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const storedToken = localStorage.getItem('deriv_token');
       if (storedToken && api) {
         await verifyToken(storedToken);
+      } else {
+        // If there's no token, we are done loading.
+        setIsLoading(false);
       }
-      // Always set loading to false after the check.
-      setIsLoading(false);
     };
     
     checkStoredToken();
@@ -182,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const value = {
-    isLinked: !!user, // isLinked is simply whether a user object exists.
+    isLinked: !!user,
     user,
     selectedAccount,
     isLoading,
