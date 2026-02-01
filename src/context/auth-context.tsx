@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { DerivUser, DerivAccount } from '@/lib/types';
 
-// Simplified WebSocket API wrapper
 class DerivAPI {
   private ws: WebSocket | null = null;
   private app_id: number;
@@ -16,7 +15,7 @@ class DerivAPI {
     this.app_id = app_id;
   }
 
-  private connect(): Promise<void> {
+  private async connect(): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN) {
       return Promise.resolve();
     }
@@ -29,8 +28,14 @@ class DerivAPI {
     this.connectionPromise = new Promise((resolve, reject) => {
       this.ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${this.app_id}`);
 
+      const timeout = setTimeout(() => {
+        reject(new Error('Connection timeout'));
+        this.connecting = false;
+      }, 10000);
+
       this.ws.onopen = () => {
-        console.log("✅ Deriv WebSocket connected.");
+        clearTimeout(timeout);
+        console.log("✅ WebSocket connected");
         this.connecting = false;
         resolve();
       };
@@ -48,25 +53,26 @@ class DerivAPI {
             this.message_callbacks.delete(data.req_id);
           }
         } catch(e) {
-          console.error("Failed to parse WebSocket message:", e);
+          console.error("Parse error:", e);
         }
       };
 
       this.ws.onclose = () => {
-        console.log('Deriv WebSocket disconnected');
+        console.log('WebSocket closed');
         this.ws = null;
         this.connecting = false;
-        this.message_callbacks.forEach((cb) => cb.reject(new Error("WebSocket disconnected")));
-        this.message_callbacks.clear();
+        this.connectionPromise = null;
       };
 
       this.ws.onerror = (err) => {
-        console.error('Deriv WebSocket error:', err);
-        this.ws = null;
+        clearTimeout(timeout);
+        console.error('WebSocket error:', err);
         this.connecting = false;
+        this.connectionPromise = null;
         reject(err);
       };
     });
+
     return this.connectionPromise;
   }
 
@@ -74,7 +80,7 @@ class DerivAPI {
     await this.connect();
     
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error("WebSocket connection failed");
+      throw new Error("Connection failed");
     }
     
     return new Promise((resolve, reject) => {
@@ -82,7 +88,7 @@ class DerivAPI {
       
       const timeout = setTimeout(() => {
         this.message_callbacks.delete(req_id);
-        reject(new Error(`Request timed out after ${timeoutMs / 1000}s`));
+        reject(new Error(`Timeout after ${timeoutMs}ms`));
       }, timeoutMs);
 
       this.message_callbacks.set(req_id, {
@@ -107,6 +113,7 @@ class DerivAPI {
   disconnect() {
     if (this.ws) {
       this.ws.close();
+      this.ws = null;
     }
   }
 }
@@ -116,12 +123,14 @@ interface AuthContextType {
   user: DerivUser | null;
   selectedAccount: DerivAccount | null;
   isLoading: boolean;
-  login: (token: string) => Promise<boolean>;
   logout: () => void;
   updateBalance: (newBalance: number) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// CRITICAL: Global lock to prevent ANY concurrent auth attempts across the entire app
+let globalAuthLock = false;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DerivUser | null>(null);
@@ -129,46 +138,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [api, setApi] = useState<DerivAPI | null>(null);
   
-  const verificationLock = useRef(false);
+  const hasInitialized = useRef(false);
+  const authAttemptInProgress = useRef(false);
 
-  // Initialize API once
   useEffect(() => {
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
     if (!appId) {
-      console.error("❌ Deriv App ID is not configured");
+      console.error("❌ No App ID");
       setIsLoading(false);
       return;
     }
+    
+    console.log("🔧 Init API");
     const derivApi = new DerivAPI({ app_id: Number(appId) });
     setApi(derivApi);
+
     return () => {
       derivApi.disconnect();
     };
   }, []);
-  
-  const performVerification = useCallback(async (token: string, isInitialLogin: boolean): Promise<boolean> => {
-    if (verificationLock.current) {
-      console.log("⚠️ Verification already in progress. Request ignored.");
-      return false;
-    }
-    if (!api) {
-      console.error("❌ API not ready for verification.");
+
+  const logout = useCallback(() => {
+    console.log("🚪 Logout");
+    localStorage.removeItem('deriv_token');
+    setUser(null);
+    setSelectedAccount(null);
+    globalAuthLock = false;
+    authAttemptInProgress.current = false;
+  }, []);
+
+  const verifyToken = useCallback(async (token: string): Promise<boolean> => {
+    // TRIPLE LOCK MECHANISM
+    if (globalAuthLock || authAttemptInProgress.current) {
+      console.log("⚠️ Auth blocked by lock");
       return false;
     }
 
-    verificationLock.current = true;
-    console.log(`🔐 Verification started. Is initial login: ${isInitialLogin}`);
-    
-    if (!isLoading) setIsLoading(true);
+    if (!api) {
+      console.error("❌ No API");
+      return false;
+    }
+
+    // Set ALL locks
+    globalAuthLock = true;
+    authAttemptInProgress.current = true;
+    console.log("🔐 Auth started");
 
     try {
       const response = await api.authorize(token);
       
       if (response.error) {
-        console.error("❌ Deriv authorization error:", response.error.message);
+        console.error("❌ Auth failed:", response.error.message);
         localStorage.removeItem('deriv_token');
-        setUser(null);
-        setSelectedAccount(null);
         return false;
       }
 
@@ -176,56 +197,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const realAccount = fullUser.account_list?.find((acc: DerivAccount) => acc.is_virtual === 0);
 
       if (!realAccount) {
-        console.error("❌ No real account found for user.");
+        console.error("❌ No real account");
         localStorage.removeItem('deriv_token');
-        setUser(null);
-        setSelectedAccount(null);
         return false;
       }
 
-      console.log("✅ Verification successful for:", fullUser.email);
+      console.log("✅ Auth success:", fullUser.email);
       setUser(fullUser);
       setSelectedAccount(realAccount);
-      localStorage.setItem('deriv_token', token);
       return true;
+
     } catch (error: any) {
-      console.error("❌ Exception during verification:", error.message || error);
+      console.error("❌ Auth error:", error.message);
       localStorage.removeItem('deriv_token');
-      setUser(null);
-      setSelectedAccount(null);
       return false;
     } finally {
-      console.log("🔓 Verification finished. Releasing lock.");
-      verificationLock.current = false;
+      globalAuthLock = false;
+      authAttemptInProgress.current = false;
       setIsLoading(false);
     }
-  }, [api, isLoading]);
-
-
-  // Effect for session persistence on refresh/revisit
-  useEffect(() => {
-    if (!api) return;
-    
-    const storedToken = localStorage.getItem('deriv_token');
-    
-    if (storedToken && !user) {
-      performVerification(storedToken, false);
-    } else {
-      setIsLoading(false);
-    }
-  }, [api, user, performVerification]);
-
-  const login = useCallback(async (token: string): Promise<boolean> => {
-    return performVerification(token, true);
-  }, [performVerification]);
-  
-  const logout = useCallback(() => {
-    console.log("🚪 Logging out and clearing session.");
-    localStorage.removeItem('deriv_token');
-    setUser(null);
-    setSelectedAccount(null);
-    if(api) api.disconnect();
   }, [api]);
+
+  useEffect(() => {
+    if (!api || hasInitialized.current || globalAuthLock) return;
+    
+    hasInitialized.current = true;
+
+    const init = async () => {
+      console.log("🔍 Check token");
+      const token = localStorage.getItem('deriv_token');
+      
+      if (token) {
+        console.log("📦 Token found");
+        await verifyToken(token);
+      } else {
+        console.log("ℹ️ No token");
+        setIsLoading(false);
+      }
+    };
+
+    // Delay initialization slightly to avoid race conditions
+    setTimeout(init, 100);
+  }, [api, verifyToken]);
 
   const updateBalance = useCallback((newBalance: number) => {
     if (selectedAccount) {
@@ -238,7 +251,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     selectedAccount,
     isLoading,
-    login,
     logout,
     updateBalance,
   };

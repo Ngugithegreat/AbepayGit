@@ -1,87 +1,77 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/auth-context';
-import { Loader2, AlertCircle, Clock } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Loader2 } from 'lucide-react';
+
+// Global flag to prevent multiple callback executions across re-renders
+let callbackHasRun = false;
 
 export default function AuthCallbackPage() {
-  const { login } = useAuth();
-  const router = useRouter();
-  const [message, setMessage] = useState('Finalizing authentication, please wait...');
-  const [error, setError] = useState<string | null>(null);
-  const hasProcessed = useRef(false);
+  const hasExecuted = useRef(false);
 
   useEffect(() => {
-    if (hasProcessed.current || !login) return;
-    hasProcessed.current = true;
+    // TRIPLE CHECK: Prevent execution if already run
+    if (hasExecuted.current || callbackHasRun) {
+      console.log("⚠️ Callback already executed, skipping");
+      return;
+    }
 
-    const processAuth = async () => {
+    // Set BOTH flags immediately
+    hasExecuted.current = true;
+    callbackHasRun = true;
+
+    console.log('🔥 CALLBACK EXECUTING ONCE');
+
+    try {
       const hash = window.location.hash.substring(1);
       const params = new URLSearchParams(hash);
       const token = params.get('token');
-      const callbackError = params.get('error');
+      const error = params.get('error');
 
-      // Immediately clean the URL hash
+      // Clean URL immediately
       window.history.replaceState(null, '', window.location.pathname);
 
-      if (callbackError) {
-        if (callbackError.toLowerCase().includes('blocked')) {
-          setError('Too many recent login attempts. Please wait a few minutes before trying again.');
-        } else {
-          setError(`Authentication failed: ${callbackError}`);
-        }
-        setMessage('Redirecting to login...');
-        setTimeout(() => router.replace('/login'), 5000);
+      if (error) {
+        console.error('❌ Error:', error);
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
         return;
       }
 
       if (!token) {
-        setError('No authentication token was received from Deriv.');
-        setMessage('Redirecting to login...');
-        setTimeout(() => router.replace('/login'), 5000);
+        console.error('❌ No token');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
         return;
       }
 
-      try {
-        const loginSuccess = await login(token);
-        if (loginSuccess) {
-          setMessage('Authentication successful! Redirecting to your dashboard...');
-          // Hard redirect to ensure a clean state
-          window.location.href = '/dashboard';
-        } else {
-          // The login function in the context will have already logged the specific error.
-          setError('Token verification failed. Please try logging in again.');
-          setMessage('Redirecting to login...');
-          setTimeout(() => router.replace('/login'), 5000);
-        }
-      } catch (e: any) {
-        setError(`An unexpected error occurred: ${e.message}`);
-        setMessage('Redirecting to login...');
-        setTimeout(() => router.replace('/login'), 5000);
-      }
-    };
+      console.log('💾 Saving token');
+      localStorage.setItem('deriv_token', token);
+      
+      console.log('🚀 Redirecting to dashboard');
+      
+      // Use setTimeout to ensure localStorage persists
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 500);
 
-    processAuth();
-  }, [login, router]);
+    } catch (err: any) {
+      console.error('💥 Error:', err);
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
+    }
+  }, []);
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center bg-slate-900">
-      {error ? (
-        <div className="max-w-md space-y-4 glass-effect rounded-xl p-8">
-            <div className="flex justify-center">
-              <AlertCircle className="h-12 w-12 text-red-500" />
-            </div>
-            <h2 className="text-2xl font-bold text-white">Authentication Failed</h2>
-            <p className="text-slate-300">{error}</p>
-            <p className="text-lg text-slate-300">{message}</p>
-        </div>
-      ) : (
-        <div className="space-y-4 text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto" />
-          <p className="text-xl text-slate-300">{message}</p>
-        </div>
-      )}
+    <div className="flex h-screen w-full items-center justify-center bg-slate-900">
+      <div className="text-center">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
+        <p className="text-xl text-slate-300">Completing login...</p>
+        <p className="text-sm text-slate-500 mt-2">Please wait</p>
+      </div>
     </div>
   );
 }
