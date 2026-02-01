@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import AccountSettings from '@/components/settings/account-card';
 
 export default function SettingsPage() {

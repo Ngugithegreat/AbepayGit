@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { DerivUser, DerivAccount } from '@/lib/types';
 
+// Simplified WebSocket API wrapper
 class DerivAPI {
   private ws: WebSocket | null = null;
   private app_id: number;

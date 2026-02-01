@@ -2,7 +2,7 @@
 
 import { AppLayout } from '@/components/app-layout';
 import { useAuth } from '@/context/auth-context';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -13,17 +13,13 @@ export default function ProtectedLayout({
 }) {
   const { isLinked, isLoading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
-    // If loading is finished and the user is not linked, redirect to login.
     if (!isLoading && !isLinked) {
       router.replace('/login');
     }
-  }, [isLoading, isLinked, router, pathname]);
+  }, [isLoading, isLinked, router]);
 
-  // While the auth state is loading, or if the user is not linked yet,
-  // show a full-screen loader. This prevents any content from flashing.
   if (isLoading || !isLinked) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-slate-900">
@@ -33,6 +29,5 @@ export default function ProtectedLayout({
     );
   }
 
-  // If loading is complete AND the user is linked, render the AppLayout with the page content.
   return <AppLayout>{children}</AppLayout>;
 }

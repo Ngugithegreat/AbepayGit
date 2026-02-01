@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { transactions } from '@/lib/data';
 import type { Transaction } from '@/lib/types';
 import { useState } from 'react';

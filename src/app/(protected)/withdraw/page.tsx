@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from '@/components/app-layout';
 import { useAuth } from '@/context/auth-context';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
