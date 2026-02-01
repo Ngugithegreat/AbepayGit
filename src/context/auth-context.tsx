@@ -116,6 +116,7 @@ interface AuthContextType {
   user: DerivUser | null;
   selectedAccount: DerivAccount | null;
   isLoading: boolean;
+  login: (token: string) => Promise<boolean>;
   logout: () => void;
   updateBalance: (newBalance: number) => void;
 }
@@ -128,8 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [api, setApi] = useState<DerivAPI | null>(null);
   
-  // The definitive lock to prevent double-execution
-  const isInitialized = useRef(false);
+  const verificationLock = useRef(false);
 
   // Initialize API once
   useEffect(() => {
@@ -139,74 +139,93 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return;
     }
-    
-    console.log("🔧 Initializing Deriv API");
     const derivApi = new DerivAPI({ app_id: Number(appId) });
     setApi(derivApi);
-
     return () => {
-      console.log("🔌 Disconnecting Deriv API");
       derivApi.disconnect();
     };
   }, []);
+  
+  const performVerification = useCallback(async (token: string, isInitialLogin: boolean): Promise<boolean> => {
+    if (verificationLock.current) {
+      console.log("⚠️ Verification already in progress. Request ignored.");
+      return false;
+    }
+    if (!api) {
+      console.error("❌ API not ready for verification.");
+      return false;
+    }
 
+    verificationLock.current = true;
+    console.log(`🔐 Verification started. Is initial login: ${isInitialLogin}`);
+    
+    if (!isLoading) setIsLoading(true);
+
+    try {
+      const response = await api.authorize(token);
+      
+      if (response.error) {
+        console.error("❌ Deriv authorization error:", response.error.message);
+        localStorage.removeItem('deriv_token');
+        setUser(null);
+        setSelectedAccount(null);
+        return false;
+      }
+
+      const fullUser = response.authorize as DerivUser;
+      const realAccount = fullUser.account_list?.find((acc: DerivAccount) => acc.is_virtual === 0);
+
+      if (!realAccount) {
+        console.error("❌ No real account found for user.");
+        localStorage.removeItem('deriv_token');
+        setUser(null);
+        setSelectedAccount(null);
+        return false;
+      }
+
+      console.log("✅ Verification successful for:", fullUser.email);
+      setUser(fullUser);
+      setSelectedAccount(realAccount);
+      localStorage.setItem('deriv_token', token);
+      return true;
+    } catch (error: any) {
+      console.error("❌ Exception during verification:", error.message || error);
+      localStorage.removeItem('deriv_token');
+      setUser(null);
+      setSelectedAccount(null);
+      return false;
+    } finally {
+      console.log("🔓 Verification finished. Releasing lock.");
+      verificationLock.current = false;
+      setIsLoading(false);
+    }
+  }, [api, isLoading]);
+
+
+  // Effect for session persistence on refresh/revisit
+  useEffect(() => {
+    if (!api) return;
+    
+    const storedToken = localStorage.getItem('deriv_token');
+    
+    if (storedToken && !user) {
+      performVerification(storedToken, false);
+    } else {
+      setIsLoading(false);
+    }
+  }, [api, user, performVerification]);
+
+  const login = useCallback(async (token: string): Promise<boolean> => {
+    return performVerification(token, true);
+  }, [performVerification]);
+  
   const logout = useCallback(() => {
-    console.log("🚪 Logging out");
+    console.log("🚪 Logging out and clearing session.");
     localStorage.removeItem('deriv_token');
     setUser(null);
     setSelectedAccount(null);
-    // On logout, we need to allow re-initialization if the user logs back in
-    isInitialized.current = false;
-  }, []);
-
-  // Main authentication effect
-  useEffect(() => {
-    // Don't run if API isn't ready or if we've already initialized.
-    if (!api || isInitialized.current) {
-      return;
-    }
-
-    // Set the lock immediately. This will not be unset.
-    isInitialized.current = true;
-    
-    const initializeAuth = async () => {
-      const storedToken = localStorage.getItem('deriv_token');
-      
-      if (storedToken) {
-        console.log("📦 Found stored token. Verifying session ONCE.");
-        try {
-          const response = await api.authorize(storedToken);
-          
-          if (response.error) {
-            console.error("❌ Authorization failed:", response.error.message);
-            logout();
-          } else {
-            const fullUser = response.authorize as DerivUser;
-            const realAccount = fullUser.account_list?.find((acc: DerivAccount) => acc.is_virtual === 0);
-
-            if (!realAccount) {
-              console.error("❌ No real account found");
-              logout();
-            } else {
-              console.log("✅ Verification successful:", fullUser.email);
-              setUser(fullUser);
-              setSelectedAccount(realAccount);
-            }
-          }
-        } catch (error: any) {
-          console.error("❌ Verification error:", error.message || error);
-          logout();
-        }
-      } else {
-        console.log("ℹ️ No stored token found.");
-      }
-      
-      // No matter what, stop loading at the end.
-      setIsLoading(false);
-    };
-
-    initializeAuth();
-  }, [api, logout]);
+    if(api) api.disconnect();
+  }, [api]);
 
   const updateBalance = useCallback((newBalance: number) => {
     if (selectedAccount) {
@@ -219,6 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     selectedAccount,
     isLoading,
+    login,
     logout,
     updateBalance,
   };
