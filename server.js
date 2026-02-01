@@ -8,7 +8,7 @@ const hostname = 'localhost';
 const port = 5000; // This is the port ngrok is expecting
 
 // when using middleware `hostname` and `port` must be provided below
-const app = next({ dev, hostname, port });
+const app = next({ dev });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
