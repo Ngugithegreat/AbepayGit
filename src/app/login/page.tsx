@@ -38,13 +38,18 @@ export default function LoginPage() {
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
     if (appId && typeof window !== 'undefined') {
       const redirectUri = `${window.location.protocol}//${window.location.host}/auth/callback`;
-      // Use the correct scope for reading user info, payments, and trading
-      // Add prompt=login to always force credential entry
-      setAuthUrl(
-        `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&redirect_uri=${encodeURIComponent(
-          redirectUri
-        )}&scope=read+payments+trade+trading_information&prompt=login`
-      );
+      
+      // The crucial fix: Adding `prompt=login` to the URL.
+      // This FORCES Deriv to show the username/password screen every single time,
+      // preventing it from using a cached session. This ensures every login is a 
+      // completely fresh attempt.
+      const derivAuthUrl = new URL('https://oauth.deriv.com/oauth2/authorize');
+      derivAuthUrl.searchParams.set('app_id', appId);
+      derivAuthUrl.searchParams.set('redirect_uri', redirectUri);
+      derivAuthUrl.searchParams.set('scope', 'read+payments+trade+trading_information');
+      derivAuthUrl.searchParams.set('prompt', 'login'); // This is the key parameter
+
+      setAuthUrl(derivAuthUrl.toString());
     }
   }, []);
 
