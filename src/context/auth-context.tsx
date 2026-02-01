@@ -10,31 +10,23 @@ class DerivAPI {
   private message_callbacks: Map<number, { resolve: (value: any) => void; reject: (reason?: any) => void; }> = new Map();
   private request_id: number = 1;
   private connecting: boolean = false;
+  private connectionPromise: Promise<void> | null = null;
 
   constructor({ app_id }: { app_id: number }) {
     this.app_id = app_id;
   }
 
-  private async connect(): Promise<void> {
+  private connect(): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN) {
       return Promise.resolve();
     }
 
-    if (this.connecting) {
-      // Wait for existing connection
-      return new Promise((resolve) => {
-        const checkConnection = setInterval(() => {
-          if (this.ws?.readyState === WebSocket.OPEN) {
-            clearInterval(checkConnection);
-            resolve();
-          }
-        }, 100);
-      });
+    if (this.connecting && this.connectionPromise) {
+      return this.connectionPromise;
     }
 
     this.connecting = true;
-
-    return new Promise((resolve, reject) => {
+    this.connectionPromise = new Promise((resolve, reject) => {
       this.ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${this.app_id}`);
 
       this.ws.onopen = () => {
@@ -75,6 +67,7 @@ class DerivAPI {
         reject(err);
       };
     });
+    return this.connectionPromise;
   }
 
   public async sendRequest(request: object, timeoutMs: number = 15000): Promise<any> {
@@ -114,7 +107,6 @@ class DerivAPI {
   disconnect() {
     if (this.ws) {
       this.ws.close();
-      this.ws = null;
     }
   }
 }
@@ -136,9 +128,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [api, setApi] = useState<DerivAPI | null>(null);
   
-  // Critical: Lock to prevent concurrent verifications
-  const verificationInProgress = useRef(false);
-  const hasCheckedInitialToken = useRef(false);
+  // The definitive lock to prevent double-execution
+  const isInitialized = useRef(false);
 
   // Initialize API once
   useEffect(() => {
@@ -164,85 +155,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('deriv_token');
     setUser(null);
     setSelectedAccount(null);
-    verificationInProgress.current = false;
+    // On logout, we need to allow re-initialization if the user logs back in
+    isInitialized.current = false;
   }, []);
 
-  const verifyToken = useCallback(async (token: string): Promise<boolean> => {
-    // Critical: Prevent concurrent verifications
-    if (verificationInProgress.current) {
-      console.log("⚠️ Verification already in progress, skipping");
-      return false;
-    }
-
-    if (!api) {
-      console.error("❌ API not initialized");
-      return false;
-    }
-
-    verificationInProgress.current = true;
-    console.log("🔐 Starting token verification");
-
-    try {
-      const response = await api.authorize(token);
-      
-      if (response.error) {
-        console.error("❌ Authorization failed:", response.error.message);
-        localStorage.removeItem('deriv_token');
-        setUser(null);
-        setSelectedAccount(null);
-        return false;
-      }
-
-      const fullUser = response.authorize as DerivUser;
-      const realAccount = fullUser.account_list?.find((acc: DerivAccount) => acc.is_virtual === 0);
-
-      if (!realAccount) {
-        console.error("❌ No real account found");
-        localStorage.removeItem('deriv_token');
-        setUser(null);
-        setSelectedAccount(null);
-        return false;
-      }
-
-      console.log("✅ Verification successful:", fullUser.email);
-      setUser(fullUser);
-      setSelectedAccount(realAccount);
-      return true;
-
-    } catch (error: any) {
-      console.error("❌ Verification error:", error.message || error);
-      localStorage.removeItem('deriv_token');
-      setUser(null);
-      setSelectedAccount(null);
-      return false;
-    } finally {
-      verificationInProgress.current = false;
-      setIsLoading(false);
-    }
-  }, [api]);
-
-  // Check for stored token on mount - ONCE ONLY
+  // Main authentication effect
   useEffect(() => {
-    if (!api) return;
-    if (hasCheckedInitialToken.current) return;
+    // Don't run if API isn't ready or if we've already initialized.
+    if (!api || isInitialized.current) {
+      return;
+    }
 
-    hasCheckedInitialToken.current = true;
-
-    const checkToken = async () => {
-      console.log("🔍 Checking for stored token");
+    // Set the lock immediately. This will not be unset.
+    isInitialized.current = true;
+    
+    const initializeAuth = async () => {
       const storedToken = localStorage.getItem('deriv_token');
       
       if (storedToken) {
-        console.log("📦 Found stored token");
-        await verifyToken(storedToken);
+        console.log("📦 Found stored token. Verifying session ONCE.");
+        try {
+          const response = await api.authorize(storedToken);
+          
+          if (response.error) {
+            console.error("❌ Authorization failed:", response.error.message);
+            logout();
+          } else {
+            const fullUser = response.authorize as DerivUser;
+            const realAccount = fullUser.account_list?.find((acc: DerivAccount) => acc.is_virtual === 0);
+
+            if (!realAccount) {
+              console.error("❌ No real account found");
+              logout();
+            } else {
+              console.log("✅ Verification successful:", fullUser.email);
+              setUser(fullUser);
+              setSelectedAccount(realAccount);
+            }
+          }
+        } catch (error: any) {
+          console.error("❌ Verification error:", error.message || error);
+          logout();
+        }
       } else {
-        console.log("ℹ️ No stored token");
-        setIsLoading(false);
+        console.log("ℹ️ No stored token found.");
       }
+      
+      // No matter what, stop loading at the end.
+      setIsLoading(false);
     };
 
-    checkToken();
-  }, [api, verifyToken]);
+    initializeAuth();
+  }, [api, logout]);
 
   const updateBalance = useCallback((newBalance: number) => {
     if (selectedAccount) {
