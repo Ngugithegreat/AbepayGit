@@ -39,10 +39,11 @@ export default function LoginPage() {
     if (appId && typeof window !== 'undefined') {
       const redirectUri = `${window.location.protocol}//${window.location.host}/auth/callback`;
       // Use the correct scope for reading user info, payments, and trading
+      // Add prompt=login to always force credential entry
       setAuthUrl(
         `https://oauth.deriv.com/oauth2/authorize?app_id=${appId}&redirect_uri=${encodeURIComponent(
           redirectUri
-        )}&scope=read+payments+trade+trading_information`
+        )}&scope=read+payments+trade+trading_information&prompt=login`
       );
     }
   }, []);
