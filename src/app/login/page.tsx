@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Terminal } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const { isLinked, isLoading } = useAuth();
   const [authUrl, setAuthUrl] = useState('');
+  const [isAppIdMissing, setIsAppIdMissing] = useState(false);
 
   // This effect handles redirecting the user if they are already logged in.
   useEffect(() => {
@@ -36,13 +38,14 @@ export default function LoginPage() {
   // Construct the Deriv OAuth URL. This runs on the client-side.
   useEffect(() => {
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
+    if (!appId || appId === 'REPLACE_WITH_YOUR_APP_ID') {
+        setIsAppIdMissing(true);
+        return;
+    }
+    
     if (appId && typeof window !== 'undefined') {
       const redirectUri = `${window.location.protocol}//${window.location.host}/auth/callback`;
       
-      // The crucial fix: Adding `prompt=login` to the URL.
-      // This FORCES Deriv to show the username/password screen every single time,
-      // preventing it from using a cached session. This ensures every login is a 
-      // completely fresh attempt.
       const derivAuthUrl = new URL('https://oauth.deriv.com/oauth2/authorize');
       derivAuthUrl.searchParams.set('app_id', appId);
       derivAuthUrl.searchParams.set('redirect_uri', redirectUri);
@@ -52,6 +55,27 @@ export default function LoginPage() {
       setAuthUrl(derivAuthUrl.toString());
     }
   }, []);
+  
+  if (isAppIdMissing) {
+      return (
+          <div className="flex min-h-screen items-center justify-center p-4 bg-slate-900">
+              <div className="w-full max-w-md glass-effect rounded-xl p-8 custom-shadow slide-in">
+                   <div className="text-center mb-8">
+                      <h2 className="text-3xl font-bold text-blue-500">
+                        Deriv M-Pesa Connect
+                      </h2>
+                    </div>
+                  <Alert variant="destructive">
+                      <Terminal className="h-4 w-4" />
+                      <AlertTitle>Configuration Required</AlertTitle>
+                      <AlertDescription>
+                          Your Deriv App ID is missing. Please open the `.env` file in the file explorer and replace `REPLACE_WITH_YOUR_APP_ID` with your actual Deriv App ID.
+                      </AlertDescription>
+                  </Alert>
+              </div>
+          </div>
+      )
+  }
 
   // Show a loading spinner while the auth state is being determined.
   // This prevents the login form from flashing on the screen for an already-logged-in user.
