@@ -126,11 +126,11 @@ interface AuthContextType {
   isLoading: boolean;
   logout: () => void;
   updateBalance: (newBalance: number) => void;
+  handleLogin: (token: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// CRITICAL: Global lock to prevent ANY concurrent auth attempts across the entire app
 let globalAuthLock = false;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -140,7 +140,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [api, setApi] = useState<DerivAPI | null>(null);
   
   const hasInitialized = useRef(false);
-  const authAttemptInProgress = useRef(false);
 
   useEffect(() => {
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
@@ -165,32 +164,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSelectedAccount(null);
     globalAuthLock = false;
-    authAttemptInProgress.current = false;
   }, []);
 
   const verifyToken = useCallback(async (token: string): Promise<boolean> => {
-    // TRIPLE LOCK MECHANISM
-    if (globalAuthLock || authAttemptInProgress.current) {
-      console.log("⚠️ Auth blocked by lock");
-      return false;
-    }
-
     if (!api) {
-      console.error("❌ No API");
+      console.error("❌ No API to verify token");
       return false;
     }
-
-    // Set ALL locks
+    
+    if (globalAuthLock) {
+      console.log("⚠️ Auth blocked by lock");
+    }
     globalAuthLock = true;
-    authAttemptInProgress.current = true;
-    console.log("🔐 Auth started");
+    console.log("🔐 Verifying token");
 
     try {
       const response = await api.authorize(token);
       
       if (response.error) {
         console.error("❌ Auth failed:", response.error.message);
-        localStorage.removeItem('deriv_token');
         return false;
       }
 
@@ -199,7 +191,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!realAccount) {
         console.error("❌ No real account");
-        localStorage.removeItem('deriv_token');
         return false;
       }
 
@@ -210,35 +201,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     } catch (error: any) {
       console.error("❌ Auth error:", error.message);
-      localStorage.removeItem('deriv_token');
       return false;
     } finally {
       globalAuthLock = false;
-      authAttemptInProgress.current = false;
       setIsLoading(false);
+      console.log("🔓 Auth finished");
     }
   }, [api]);
+  
+  const handleLogin = useCallback(async (token: string) => {
+      setIsLoading(true);
+      localStorage.setItem('deriv_token', token);
+      const success = await verifyToken(token);
+      if (!success) {
+          localStorage.removeItem('deriv_token');
+      }
+      return success;
+  }, [verifyToken]);
 
   useEffect(() => {
-    if (!api || hasInitialized.current || globalAuthLock) return;
+    if (!api || hasInitialized.current) return;
     
     hasInitialized.current = true;
 
     const init = async () => {
-      console.log("🔍 Check token");
       const token = localStorage.getItem('deriv_token');
       
       if (token) {
-        console.log("📦 Token found");
+        console.log("📦 Token found, verifying session");
         await verifyToken(token);
       } else {
-        console.log("ℹ️ No token");
+        console.log("ℹ️ No token, not logged in");
         setIsLoading(false);
       }
     };
-
-    // Delay initialization slightly to avoid race conditions
-    setTimeout(init, 100);
+    
+    init();
   }, [api, verifyToken]);
 
   const updateBalance = useCallback((newBalance: number) => {
@@ -254,6 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     logout,
     updateBalance,
+    handleLogin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
