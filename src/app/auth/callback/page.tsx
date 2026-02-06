@@ -8,6 +8,7 @@ import { useAuth } from '@/context/auth-context';
 export default function AuthCallbackPage() {
   const { handleLogin } = useAuth();
   const router = useRouter();
+  // We keep useSearchParams to ensure the page is dynamic
   const searchParams = useSearchParams();
   const hasRun = useRef(false);
 
@@ -16,20 +17,30 @@ export default function AuthCallbackPage() {
     hasRun.current = true;
 
     const processAuth = async () => {
-      // Deriv can return the token in the query string OR the hash. This handles both.
-      const queryToken = searchParams.get('token');
-      const hash = window.location.hash.substring(1);
-      const hashParams = new URLSearchParams(hash);
-      const hashToken = hashParams.get('token');
+      // Combine query and hash parameters into a single URLSearchParams object
+      const allParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      hashParams.forEach((value, key) => {
+        if (!allParams.has(key)) {
+          allParams.append(key, value);
+        }
+      });
 
-      const token = queryToken || hashToken;
-
-      const error = searchParams.get('error') || hashParams.get('error');
+      const error = allParams.get('error');
 
       if (error) {
-        console.error('Deriv Auth Error:', error);
+        console.error('Deriv Auth Error:', allParams.get('error_description') || error);
         router.replace('/login?error=' + encodeURIComponent(error));
         return;
+      }
+
+      // Find the first token in the parameters (e.g., token1, token2, etc.)
+      let token: string | null = null;
+      for (const [key, value] of allParams.entries()) {
+        if (key.startsWith('token')) {
+          token = value;
+          break; // Use the first token we find
+        }
       }
 
       if (token) {
@@ -45,7 +56,10 @@ export default function AuthCallbackPage() {
       }
     };
 
-    processAuth();
+    // Ensure window is available before processing
+    if (typeof window !== 'undefined') {
+      processAuth();
+    }
   }, [handleLogin, router, searchParams]);
 
   return (
