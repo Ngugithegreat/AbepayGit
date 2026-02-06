@@ -36,7 +36,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link href="/dashboard" className="flex-shrink-0 flex items-center">
-                <span className="text-blue-500 text-xl font-bold">DerivPay</span>
+                <span className="text-blue-500 text-xl font-bold">Abepay</span>
               </Link>
             </div>
             <div className="flex items-center">

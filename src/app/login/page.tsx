@@ -10,30 +10,31 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { isLinked, isLoading } = useAuth();
+  const { isLinked, isLoading, user } = useAuth();
   const [authUrl, setAuthUrl] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  // This effect handles redirecting the user if they are already logged in.
+  // Redirect if already logged in
   useEffect(() => {
     if (!isLoading && isLinked) {
       router.replace('/dashboard');
     }
   }, [isLoading, isLinked, router]);
 
-  // Handle errors shown on the login page (e.g., from a failed callback)
+  // Handle auth errors from callback
   useEffect(() => {
     const error = searchParams.get('error');
     if (error) {
       toast({
         title: 'Authentication Failed',
-        description:
-          'There was an error during the login process. Please try again.',
+        description: 'There was an error during the linking process. Please try again.',
         variant: 'destructive',
       });
     }
   }, [searchParams, toast]);
 
-  // Construct the Deriv OAuth URL. This runs on the client-side.
+  // Construct the Deriv OAuth URL for the "Sign Up" link
   useEffect(() => {
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
     
@@ -49,10 +50,25 @@ export default function LoginPage() {
       setAuthUrl(derivAuthUrl.toString());
     }
   }, []);
+  
+  const handleSignIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    // This is the simulated login.
+    // We check if a user is stored in the context (which reads from localStorage)
+    // and if the entered email matches. The password is ignored for security.
+    if (user && user.email.toLowerCase() === email.toLowerCase()) {
+      // User is "authenticated" because they knew the email associated with the stored token.
+      router.replace('/dashboard');
+    } else {
+      toast({
+        title: 'Invalid Details',
+        description: "We couldn't find an account with that email. Please Sign Up to link your Deriv account first.",
+        variant: 'destructive',
+      });
+    }
+  };
 
-  // Show a loading spinner while the auth state is being determined.
-  // This prevents the login form from flashing on the screen for an already-logged-in user.
-  if (isLoading || isLinked) {
+  if (isLoading || (isLinked && !user)) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center bg-slate-900">
         <div className="flex items-center gap-2 text-slate-300">
@@ -63,24 +79,73 @@ export default function LoginPage() {
     );
   }
 
-  // Render the login page if the user is not authenticated.
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-slate-900">
       <div className="w-full max-w-md glass-effect rounded-xl p-8 custom-shadow slide-in">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-blue-500">
-            Deriv M-Pesa Connect
+            Abepay
           </h2>
           <p className="text-gray-400 mt-2">Instant deposits and withdrawals</p>
         </div>
 
-        <button
-          onClick={() => authUrl && (window.location.href = authUrl)}
-          disabled={!authUrl}
-          className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <i className="fas fa-external-link-alt mr-2"></i> Login & Link with Deriv
-        </button>
+        <form onSubmit={handleSignIn} className="space-y-6">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">Email Address</label>
+            <input 
+              id="email"
+              name="email"
+              type="email" 
+              autoComplete="email"
+              required 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+            <input 
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+            />
+          </div>
+
+          <div>
+            <button 
+              type="submit"
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center"
+            >
+              Sign In
+            </button>
+          </div>
+        </form>
+
+        <div className="text-center mt-6">
+          <p className="text-sm text-gray-400">
+            Don't have an account?{' '}
+            <a 
+              href={authUrl || '#'} 
+              onClick={(e) => {
+                if (!authUrl) {
+                  e.preventDefault();
+                  toast({ title: 'Please wait', description: 'Generating login link...' });
+                }
+              }}
+              className="font-medium text-blue-500 hover:text-blue-400"
+            >
+              Sign Up
+            </a>
+          </p>
+          <p className="text-xs text-gray-500 mt-2">(You will be redirected to Deriv to link your account)</p>
+        </div>
       </div>
     </div>
   );

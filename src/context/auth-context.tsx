@@ -126,7 +126,6 @@ interface AuthContextType {
   isLoading: boolean;
   logout: () => void;
   updateBalance: (newBalance: number) => void;
-  handleLogin: (token: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -160,7 +159,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     console.log("🚪 Logout");
-    localStorage.removeItem('deriv_token');
+    localStorage.removeItem('deriv_user');
+    localStorage.removeItem('deriv_token'); // Also clear any old tokens
     setUser(null);
     setSelectedAccount(null);
     globalAuthLock = false;
@@ -174,6 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (globalAuthLock) {
       console.log("⚠️ Auth blocked by lock");
+      return false;
     }
     globalAuthLock = true;
     console.log("🔐 Verifying token");
@@ -195,6 +196,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       console.log("✅ Auth success:", fullUser.email);
+      // Store the full user object for persistence
+      localStorage.setItem('deriv_user', JSON.stringify(fullUser));
       setUser(fullUser);
       setSelectedAccount(realAccount);
       return true;
@@ -204,20 +207,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return false;
     } finally {
       globalAuthLock = false;
-      setIsLoading(false);
-      console.log("🔓 Auth finished");
     }
   }, [api]);
-  
-  const handleLogin = useCallback(async (token: string) => {
-      setIsLoading(true);
-      localStorage.setItem('deriv_token', token);
-      const success = await verifyToken(token);
-      if (!success) {
-          localStorage.removeItem('deriv_token');
-      }
-      return success;
-  }, [verifyToken]);
 
   useEffect(() => {
     if (!api || hasInitialized.current) return;
@@ -225,19 +216,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasInitialized.current = true;
 
     const init = async () => {
-      const token = localStorage.getItem('deriv_token');
-      
-      if (token) {
-        console.log("📦 Token found, verifying session");
-        await verifyToken(token);
+      const storedUserJSON = localStorage.getItem('deriv_user');
+      const tempToken = localStorage.getItem('deriv_token');
+
+      if (storedUserJSON) {
+        // FAST PATH: User already fully authenticated and user object is stored.
+        console.log("📦 User object found, re-hydrating session");
+        const storedUser = JSON.parse(storedUserJSON);
+        setUser(storedUser);
+        const realAccount = storedUser.account_list?.find((acc: DerivAccount) => acc.is_virtual === 0);
+        setSelectedAccount(realAccount || null);
+        setIsLoading(false);
+      } else if (tempToken) {
+        // SLOW PATH: User just came back from OAuth. We have a temporary token.
+        // We need to verify it, get the user object, store it, and delete the temp token.
+        console.log("📦 Temp token found, verifying session");
+        const success = await verifyToken(tempToken);
+        if (success) {
+          localStorage.removeItem('deriv_token'); // Clean up the temp token
+        } else {
+          // Verification failed, clean up everything.
+          logout();
+        }
+        setIsLoading(false);
       } else {
-        console.log("ℹ️ No token, not logged in");
+        // NO-SESSION PATH: User is logged out.
+        console.log("ℹ️ No session, not logged in");
         setIsLoading(false);
       }
     };
     
+    // Give API time to connect before we check for tokens
     setTimeout(init, 2000);
-  }, [api, verifyToken]);
+  }, [api, verifyToken, logout]);
 
   const updateBalance = useCallback((newBalance: number) => {
     if (selectedAccount) {
@@ -252,7 +263,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     logout,
     updateBalance,
-    handleLogin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
