@@ -236,7 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
     
-    init();
+    setTimeout(init, 2000);
   }, [api, verifyToken]);
 
   const updateBalance = useCallback((newBalance: number) => {

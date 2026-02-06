@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 
 export default function AuthCallbackPage() {
+  const searchParams = useSearchParams();
   const { handleLogin } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const hasRun = useRef(false);
 
   useEffect(() => {
@@ -17,7 +17,6 @@ export default function AuthCallbackPage() {
 
     const processAuth = async () => {
       const error = searchParams.get('error');
-
       if (error) {
         console.error('Deriv Auth Error:', searchParams.get('error_description') || error);
         router.replace('/login?error=' + encodeURIComponent(error));
@@ -25,13 +24,7 @@ export default function AuthCallbackPage() {
       }
 
       // Find the first token in the query parameters (e.g., token1, token2, etc.)
-      let token: string | null = null;
-      for (const [key, value] of searchParams.entries()) {
-        if (key.startsWith('token')) {
-          token = value;
-          break; // Use the first token we find
-        }
-      }
+      const token = searchParams.get('token1');
 
       if (token) {
         const success = await handleLogin(token);
@@ -45,10 +38,10 @@ export default function AuthCallbackPage() {
         router.replace('/login?error=no_token_found');
       }
     };
-    
+
     processAuth();
     
-  }, [handleLogin, router, searchParams]);
+  }, [searchParams, handleLogin, router]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-slate-900">
