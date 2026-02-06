@@ -39,7 +39,7 @@ export default function AccountSettings() {
                         </div>
                     </div>
                     <div className="text-right">
-                         <p className="text-sm font-bold text-white">{selectedAccount.currency} {selectedAccount.balance.toFixed(2)}</p>
+                         <p className="text-sm font-bold text-white">{selectedAccount.currency || 'USD'} {(selectedAccount.balance || 0).toFixed(2)}</p>
                          <p className="text-xs text-gray-400">Current Balance</p>
                     </div>
                 </div>

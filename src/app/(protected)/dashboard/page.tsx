@@ -101,7 +101,7 @@ export default function DashboardPage() {
               <div>
                 <p className="text-gray-400 text-sm">Deriv Balance</p>
                 <h2 className="text-2xl font-bold text-white mt-1">
-                  {selectedAccount ? `${selectedAccount.currency} ${selectedAccount.balance.toFixed(2)}` : '$0.00'}
+                  {selectedAccount ? `${selectedAccount.currency || 'USD'} ${(selectedAccount.balance || 0).toFixed(2)}` : '$0.00'}
                 </h2>
               </div>
               <div className="bg-blue-500 bg-opacity-20 rounded-full p-3">

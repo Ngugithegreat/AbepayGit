@@ -55,7 +55,7 @@ export default function DepositCard() {
     // Simulate STK push and transaction processing
     setTimeout(() => {
       const isSuccess = Math.random() > 0.1; // 90% success rate
-      const newBalance = selectedAccount.balance + values.amount;
+      const newBalance = (selectedAccount.balance || 0) + values.amount;
 
       if (isSuccess) {
         updateBalance(newBalance);
@@ -106,7 +106,7 @@ export default function DepositCard() {
               {isLoading || !selectedAccount ? <Skeleton className="h-5 w-64" /> : 
               <>
                 Your current account balance is{' '}
-                <span className="font-semibold text-primary">{selectedAccount.currency} {selectedAccount.balance.toFixed(2)}</span>
+                <span className="font-semibold text-primary">{selectedAccount.currency || 'USD'} {(selectedAccount.balance || 0).toFixed(2)}</span>
               </>
               }
             </CardDescription>

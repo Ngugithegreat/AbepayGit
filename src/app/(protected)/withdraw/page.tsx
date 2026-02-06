@@ -22,7 +22,7 @@ export default function WithdrawPage() {
         return;
     }
     const amount = parseFloat(withdrawAmount);
-    if(amount > selectedAccount.balance) {
+    if(amount > (selectedAccount.balance || 0)) {
          toast({
             title: "Error",
             description: "Withdrawal amount cannot exceed your balance.",
@@ -37,7 +37,7 @@ export default function WithdrawPage() {
         const isSuccess = Math.random() > 0.1;
         
         if(isSuccess) {
-            updateBalance(selectedAccount.balance - amount);
+            updateBalance((selectedAccount.balance || 0) - amount);
             toast({
                 title: "Withdrawal Successful",
                 description: `Successfully withdrew $${amount.toFixed(2)}.`
@@ -65,7 +65,7 @@ export default function WithdrawPage() {
             <form onSubmit={handleWithdraw} className="space-y-6">
               <div>
                 <label htmlFor="withdrawAccount" className="block text-sm font-medium text-gray-300 mb-1">Withdraw from Account</label>
-                <input type="text" id="withdrawAccount" disabled value={selectedAccount ? `${selectedAccount.loginid} (Balance: ${selectedAccount.balance.toFixed(2)})` : 'No Account Linked'} className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white disabled:opacity-70"/>
+                <input type="text" id="withdrawAccount" disabled value={selectedAccount ? `${selectedAccount.loginid} (Balance: ${(selectedAccount.balance || 0).toFixed(2)})` : 'No Account Linked'} className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white disabled:opacity-70"/>
               </div>
               <div>
                 <label htmlFor="withdrawPhone" className="block text-sm font-medium text-gray-300 mb-1">M-Pesa Phone Number</label>
