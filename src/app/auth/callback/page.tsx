@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 
 export default function AuthCallbackPage() {
   const { handleLogin } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const hasRun = useRef(false);
 
   useEffect(() => {
@@ -15,10 +16,15 @@ export default function AuthCallbackPage() {
     hasRun.current = true;
 
     const processAuth = async () => {
+      // Deriv can return the token in the query string OR the hash. This handles both.
+      const queryToken = searchParams.get('token');
       const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      const token = params.get('token');
-      const error = params.get('error');
+      const hashParams = new URLSearchParams(hash);
+      const hashToken = hashParams.get('token');
+
+      const token = queryToken || hashToken;
+
+      const error = searchParams.get('error') || hashParams.get('error');
 
       if (error) {
         console.error('Deriv Auth Error:', error);
@@ -34,13 +40,13 @@ export default function AuthCallbackPage() {
           router.replace('/login?error=auth_failed');
         }
       } else {
-        console.error('No token found in callback.');
+        console.error('No token found in callback URL.');
         router.replace('/login?error=auth_failed');
       }
     };
 
     processAuth();
-  }, [handleLogin, router]);
+  }, [handleLogin, router, searchParams]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center bg-slate-900">
