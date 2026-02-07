@@ -52,22 +52,44 @@ export async function POST(request: NextRequest) {
     const auth = Buffer.from(`${config.CONSUMER_KEY}:${config.CONSUMER_SECRET}`).toString('base64');
 
     console.log('🔐 Getting M-Pesa access token...');
-    const authResponse = await fetch(config.AUTH_URL, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-      },
-    });
+    console.log('Auth URL:', config.AUTH_URL);
+    console.log('Consumer Key (first 10 chars):', config.CONSUMER_KEY.substring(0, 10));
 
-    if (!authResponse.ok) {
-      console.error('❌ Auth failed:', await authResponse.text());
-      throw new Error('Failed to authenticate with M-Pesa');
+    let accessToken: string;
+
+    try {
+      const authResponse = await fetch(config.AUTH_URL, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Auth response status:', authResponse.status);
+      const authText = await authResponse.text();
+      console.log('Auth response body:', authText);
+
+      if (!authResponse.ok) {
+        console.error('❌ Auth failed with status:', authResponse.status);
+        console.error('❌ Response:', authText);
+        throw new Error(`M-Pesa auth failed: ${authText}`);
+      }
+
+      const authData = JSON.parse(authText);
+      
+      if (!authData.access_token) {
+        console.error('❌ No access token in response:', authData);
+        throw new Error('No access token received from M-Pesa');
+      }
+
+      accessToken = authData.access_token;
+      console.log('✅ Access token received');
+      
+    } catch (error) {
+      // Re-throw to be caught by the main handler
+      throw error;
     }
-
-    const authData = await authResponse.json();
-    const accessToken = authData.access_token;
-
-    console.log('✅ Access token received');
 
     // Step 2: Generate timestamp and password
     const timestamp = generateTimestamp();
