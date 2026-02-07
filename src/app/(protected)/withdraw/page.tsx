@@ -10,6 +10,18 @@ export default function WithdrawPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [phone, setPhone] = useState('');
+  const [kesAmount, setKesAmount] = useState(0);
+  const exchangeRate = 128; // Example rate
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const usd = e.target.value;
+    setWithdrawAmount(usd);
+    if (usd && !isNaN(parseFloat(usd))) {
+        setKesAmount(parseFloat(usd) * exchangeRate);
+    } else {
+        setKesAmount(0);
+    }
+  }
 
   const handleWithdraw = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +55,7 @@ export default function WithdrawPage() {
                 description: `Successfully withdrew $${amount.toFixed(2)}.`
             });
             setWithdrawAmount('');
+            setKesAmount(0);
         } else {
             toast({
                 title: "Withdrawal Failed",
@@ -82,9 +95,15 @@ export default function WithdrawPage() {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span className="text-gray-400 sm:text-sm">$</span>
                   </div>
-                  <input type="number" id="withdrawAmount" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} required min="1" placeholder="0.00" className="pl-8 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
+                  <input type="number" id="withdrawAmount" value={withdrawAmount} onChange={handleAmountChange} required min="1" placeholder="0.00" className="pl-8 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
                 </div>
-                 <p className="text-xs text-gray-500 mt-1">Min: $1.00</p>
+                 <div className="text-xs text-gray-500 mt-2 flex justify-between">
+                    <span>Min: $1.00</span>
+                     <span className="font-medium text-gray-400">Rate: 1 USD ≈ {exchangeRate} KES</span>
+                </div>
+                 {kesAmount > 0 && (
+                    <p className="text-sm text-green-400 mt-2">You will receive approximately <span className="font-bold">KES {kesAmount.toFixed(2)}</span>.</p>
+                )}
               </div>
               <div>
                 <button type="submit" disabled={isLoading} className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:bg-purple-800">

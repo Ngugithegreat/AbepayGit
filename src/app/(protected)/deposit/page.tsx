@@ -10,6 +10,18 @@ export default function DepositPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
   const [phone, setPhone] = useState('');
+  const [kesAmount, setKesAmount] = useState(0);
+  const exchangeRate = 130; // Example rate
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const usd = e.target.value;
+    setDepositAmount(usd);
+    if (usd && !isNaN(parseFloat(usd))) {
+        setKesAmount(parseFloat(usd) * exchangeRate);
+    } else {
+        setKesAmount(0);
+    }
+  }
 
   const handleDeposit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +47,7 @@ export default function DepositPage() {
                 description: `Successfully deposited $${amount.toFixed(2)}.`
             });
             setDepositAmount('');
+            setKesAmount(0);
         } else {
             toast({
                 title: "Deposit Failed",
@@ -74,9 +87,15 @@ export default function DepositPage() {
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <span className="text-gray-400 sm:text-sm">$</span>
               </div>
-              <input type="number" id="depositAmount" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} required min="1" max="5000" placeholder="0.00" className="pl-8 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
+              <input type="number" id="depositAmount" value={depositAmount} onChange={handleAmountChange} required min="1" max="5000" placeholder="0.00" className="pl-8 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">Min: $1.00, Max: $5000.00</p>
+            <div className="text-xs text-gray-500 mt-2 flex justify-between">
+                <span>Min: $1.00, Max: $5000.00</span>
+                <span className="font-medium text-gray-400">Rate: 1 USD ≈ {exchangeRate} KES</span>
+            </div>
+             {kesAmount > 0 && (
+                <p className="text-sm text-green-400 mt-2">You will deposit approximately <span className="font-bold">KES {kesAmount.toFixed(2)}</span>.</p>
+            )}
           </div>
           <div>
             <button type="submit" disabled={isLoading} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:bg-blue-800">
@@ -86,17 +105,25 @@ export default function DepositPage() {
         </form>
       </div>
       <div className="glass-effect rounded-xl p-6 custom-shadow">
-        <h3 className="font-medium text-white mb-4">Deposit Limits</h3>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center pb-2 border-b border-slate-700">
-            <span className="text-sm text-gray-300">Minimum Deposit</span>
-            <span className="text-sm font-medium text-white">$1.00</span>
-          </div>
-          <div className="flex justify-between items-center pb-2 border-b border-slate-700">
-            <span className="text-sm text-gray-300">Maximum Deposit</span>
-            <span className="text-sm font-medium text-white">$5,000.00</span>
-          </div>
-        </div>
+        <h3 className="font-medium text-white mb-4">How It Works</h3>
+        <ul className="space-y-4 text-sm text-gray-300">
+          <li className="flex items-start">
+            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">1</span>
+            <span>Enter the phone number registered with M-Pesa.</span>
+          </li>
+          <li className="flex items-start">
+            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">2</span>
+            <span>Enter the amount in USD you wish to deposit (Min: $1.00).</span>
+          </li>
+          <li className="flex items-start">
+            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">3</span>
+            <span>Click 'Deposit Now' to initiate the transaction.</span>
+          </li>
+           <li className="flex items-start">
+            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">4</span>
+            <span>You will receive a push notification on your phone. Enter your M-Pesa PIN to confirm.</span>
+          </li>
+        </ul>
       </div>
     </div>
   </div>

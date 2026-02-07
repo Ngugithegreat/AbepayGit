@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/context/auth-context';
 import { useEffect, useRef } from 'react';
+import Link from 'next/link';
 
 declare var Chart: any;
 
@@ -85,9 +86,6 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const totalDeposits = 8890.00;
-  const totalWithdrawals = 2560.00;
-
   return (
       <div className="slide-in">
         <div className="mb-6">
@@ -114,37 +112,35 @@ export default function DashboardPage() {
             </div>
           </div>
           
-          <div className="glass-effect rounded-xl p-6 custom-shadow">
+          <Link href="/deposit" className="glass-effect rounded-xl p-6 custom-shadow block hover:bg-slate-700/70 transition-colors duration-300">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total Deposits</p>
-                <h2 className="text-2xl font-bold text-white mt-1">${totalDeposits.toFixed(2)}</h2>
+                <h3 className="text-xl font-bold text-white">Deposit</h3>
+                <p className="text-gray-400 text-sm mt-1">Add funds via M-Pesa</p>
               </div>
               <div className="bg-green-500 bg-opacity-20 rounded-full p-3">
                 <i className="fas fa-arrow-down text-green-500"></i>
               </div>
             </div>
              <div className="mt-4 text-sm">
-              <span className="text-green-500"><i className="fas fa-arrow-up mr-1"></i>12.4%</span>
-              <span className="text-gray-400 ml-2">from last month</span>
+              <span className="text-green-400 font-medium">Click to start deposit</span>
             </div>
-          </div>
+          </Link>
           
-          <div className="glass-effect rounded-xl p-6 custom-shadow">
+          <Link href="/withdraw" className="glass-effect rounded-xl p-6 custom-shadow block hover:bg-slate-700/70 transition-colors duration-300">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total Withdrawals</p>
-                <h2 className="text-2xl font-bold text-white mt-1">${totalWithdrawals.toFixed(2)}</h2>
+                <h3 className="text-xl font-bold text-white">Withdraw</h3>
+                <p className="text-gray-400 text-sm mt-1">Send funds to M-Pesa</p>
               </div>
               <div className="bg-purple-500 bg-opacity-20 rounded-full p-3">
                 <i className="fas fa-arrow-up text-purple-500"></i>
               </div>
             </div>
              <div className="mt-4 text-sm">
-              <span className="text-red-500"><i className="fas fa-arrow-down mr-1"></i>5.1%</span>
-              <span className="text-gray-400 ml-2">from last month</span>
+              <span className="text-purple-400 font-medium">Click to start withdrawal</span>
             </div>
-          </div>
+          </Link>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
