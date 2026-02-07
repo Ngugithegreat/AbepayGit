@@ -11,6 +11,7 @@ class DerivAPI {
   private request_id: number = 1;
   private connecting: boolean = false;
   private connectionPromise: Promise<void> | null = null;
+  public onBalanceUpdate: ((balance: number) => void) | null = null;
 
   constructor({ app_id }: { app_id: number }) {
     this.app_id = app_id;
@@ -44,6 +45,17 @@ class DerivAPI {
       this.ws.onmessage = (msg) => {
         try {
           const data = JSON.parse(msg.data);
+          
+          // Check for balance update
+          if (data.balance && !data.req_id) {
+            console.log("💰 Balance update received:", data.balance);
+            // Trigger a callback for balance updates
+            if (this.onBalanceUpdate) {
+              this.onBalanceUpdate(parseFloat(data.balance.balance));
+            }
+          }
+          
+          // Regular request/response handling
           if (data.req_id && this.message_callbacks.has(data.req_id)) {
             const callback = this.message_callbacks.get(data.req_id);
             if (data.error) {
@@ -140,6 +152,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const hasInitialized = useRef(false);
 
+  const updateBalance = useCallback((newBalance: number) => {
+    if (selectedAccount) {
+      setSelectedAccount(prev => prev ? { ...prev, balance: newBalance } : null);
+      
+      // also update the balance in the main user object to persist it
+      setUser(prevUser => {
+        if (!prevUser) return null;
+        const newAccountList = prevUser.account_list.map(acc => 
+            acc.loginid === selectedAccount.loginid ? { ...acc, balance: newBalance } : acc
+        );
+        const updatedUser = { ...prevUser, account_list: newAccountList };
+        
+        if (prevUser.loginid === selectedAccount.loginid) {
+            updatedUser.balance = newBalance;
+        }
+        
+        localStorage.setItem('deriv_user', JSON.stringify(updatedUser));
+        return updatedUser;
+      });
+    }
+  }, [selectedAccount]);
+
   useEffect(() => {
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
     if (!appId) {
@@ -150,12 +184,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     console.log("🔧 Init API");
     const derivApi = new DerivAPI({ app_id: Number(appId) });
+    
+    // Set balance update callback
+    derivApi.onBalanceUpdate = (newBalance: number) => {
+      console.log("💰 Balance updated to:", newBalance);
+      updateBalance(newBalance);
+    };
+    
     setApi(derivApi);
 
     return () => {
       derivApi.disconnect();
     };
-  }, []);
+  }, [updateBalance]);
 
   const logout = useCallback(() => {
     console.log("🚪 Logout");
@@ -235,6 +276,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(authData);
       localStorage.setItem('deriv_user', JSON.stringify(authData));
       console.log("✅ Auth success:", authData.email);
+
+      // Subscribe to balance updates
+      try {
+        await api.sendRequest({
+          balance: 1,
+          subscribe: 1
+        });
+        console.log("✅ Subscribed to balance updates");
+      } catch (err) {
+        console.error("Failed to subscribe to balance updates:", err);
+      }
+
       return true;
 
     } catch (error: any) {
@@ -293,28 +346,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Give API time to connect before we check for tokens
     setTimeout(init, 2000);
   }, [api, verifyToken, logout]);
-
-  const updateBalance = useCallback((newBalance: number) => {
-    if (selectedAccount) {
-      setSelectedAccount(prev => prev ? { ...prev, balance: newBalance } : null);
-      
-      // also update the balance in the main user object to persist it
-      setUser(prevUser => {
-        if (!prevUser) return null;
-        const newAccountList = prevUser.account_list.map(acc => 
-            acc.loginid === selectedAccount.loginid ? { ...acc, balance: newBalance } : acc
-        );
-        const updatedUser = { ...prevUser, account_list: newAccountList };
-        
-        if (prevUser.loginid === selectedAccount.loginid) {
-            updatedUser.balance = newBalance;
-        }
-        
-        localStorage.setItem('deriv_user', JSON.stringify(updatedUser));
-        return updatedUser;
-      });
-    }
-  }, [selectedAccount]);
 
   const value: AuthContextType = {
     isLinked: !!user && !isLoading,
