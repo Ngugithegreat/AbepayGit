@@ -187,19 +187,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      const fullUser = response.authorize as DerivUser;
-      const realAccount = fullUser.account_list?.find((acc: DerivAccount) => acc.is_virtual === 0);
+      const authData = response.authorize as DerivUser;
 
-      if (!realAccount) {
-        console.error("❌ No real account");
-        return false;
+      const authorizedLoginId = authData.loginid;
+      const mainAccount = authData.account_list?.find(acc => acc.loginid === authorizedLoginId);
+
+      if (!mainAccount) {
+          console.error("❌ Authorized account not found in account list. This should not happen.");
+          return false;
       }
 
-      console.log("✅ Auth success:", fullUser.email);
-      // Store the full user object for persistence
-      localStorage.setItem('deriv_user', JSON.stringify(fullUser));
-      setUser(fullUser);
-      setSelectedAccount(realAccount);
+      if (mainAccount.is_virtual === 0) {
+            setSelectedAccount(mainAccount);
+      } else {
+          const realAccount = authData.account_list?.find(acc => acc.is_virtual === 0);
+          if (realAccount) {
+              console.warn("⚠️ User logged in with virtual account, switching to first real account:", realAccount.loginid);
+              setSelectedAccount(realAccount);
+          } else {
+              console.error("❌ User logged in with a virtual account, and no real accounts were found.");
+              return false;
+          }
+      }
+
+      setUser(authData);
+      localStorage.setItem('deriv_user', JSON.stringify(authData));
+      console.log("✅ Auth success:", authData.email);
       return true;
 
     } catch (error: any) {
@@ -220,12 +233,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const tempToken = localStorage.getItem('deriv_token');
 
       if (storedUserJSON) {
-        // FAST PATH: User already fully authenticated and user object is stored.
         console.log("📦 User object found, re-hydrating session");
-        const storedUser = JSON.parse(storedUserJSON);
+        const storedUser = JSON.parse(storedUserJSON) as DerivUser;
         setUser(storedUser);
-        const realAccount = storedUser.account_list?.find((acc: DerivAccount) => acc.is_virtual === 0);
-        setSelectedAccount(realAccount || null);
+
+        const mainLoginId = storedUser.loginid;
+        const mainAccount = storedUser.account_list?.find(acc => acc.loginid === mainLoginId);
+        
+        let accountToSet: DerivAccount | null = null;
+        if (mainAccount && mainAccount.is_virtual === 0) {
+            accountToSet = mainAccount;
+        } else {
+            accountToSet = storedUser.account_list?.find(acc => acc.is_virtual === 0) || null;
+        }
+        
+        setSelectedAccount(accountToSet);
         setIsLoading(false);
       } else if (tempToken) {
         // SLOW PATH: User just came back from OAuth. We have a temporary token.
@@ -253,6 +275,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateBalance = useCallback((newBalance: number) => {
     if (selectedAccount) {
       setSelectedAccount(prev => prev ? { ...prev, balance: newBalance } : null);
+      
+      // also update the balance in the main user object to persist it
+      setUser(prevUser => {
+        if (!prevUser) return null;
+        const newAccountList = prevUser.account_list.map(acc => 
+            acc.loginid === selectedAccount.loginid ? { ...acc, balance: newBalance } : acc
+        );
+        const updatedUser = { ...prevUser, account_list: newAccountList };
+        
+        if (prevUser.loginid === selectedAccount.loginid) {
+            updatedUser.balance = newBalance;
+        }
+        
+        localStorage.setItem('deriv_user', JSON.stringify(updatedUser));
+        return updatedUser;
+      });
     }
   }, [selectedAccount]);
 
