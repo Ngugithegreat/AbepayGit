@@ -5,17 +5,19 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function DepositPage() {
-  const { selectedAccount, updateBalance } = useAuth();
+  const { selectedAccount } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
   const [phone, setPhone] = useState('');
   const [kesAmount, setKesAmount] = useState(0);
+  const [message, setMessage] = useState('');
   const exchangeRate = 130; // Example rate
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const usd = e.target.value;
     setDepositAmount(usd);
+    setMessage('');
     if (usd && !isNaN(parseFloat(usd))) {
         setKesAmount(parseFloat(usd) * exchangeRate);
     } else {
@@ -23,7 +25,7 @@ export default function DepositPage() {
     }
   }
 
-  const handleDeposit = (e: React.FormEvent) => {
+  const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAccount) {
         toast({
@@ -33,30 +35,53 @@ export default function DepositPage() {
         });
         return;
     }
+    if (kesAmount < 1) {
+        toast({
+            title: "Error",
+            description: "Amount must be at least KES 1.",
+            variant: "destructive"
+        });
+        return;
+    }
     
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-        const amount = parseFloat(depositAmount);
-        const isSuccess = Math.random() > 0.1;
-        
-        if(isSuccess) {
-            updateBalance(selectedAccount.balance + amount);
+    setMessage('');
+
+    try {
+        const response = await fetch('/api/mpesa/initiate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                phone: phone,
+                amount: kesAmount
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            setMessage('✅ STK push sent! Check your phone and enter M-Pesa PIN to complete the transaction.');
             toast({
-                title: "Deposit Successful",
-                description: `Successfully deposited $${amount.toFixed(2)}.`
+                title: "Action Required",
+                description: "Check your phone to complete the M-Pesa payment.",
             });
-            setDepositAmount('');
-            setKesAmount(0);
         } else {
             toast({
-                title: "Deposit Failed",
-                description: "Could not process your deposit. Please try again.",
+                title: "Payment Failed",
+                description: data.error || "Could not initiate M-Pesa payment. Please try again.",
                 variant: "destructive"
             });
         }
+    } catch (error) {
+        console.error("Deposit error:", error);
+        toast({
+            title: "Error",
+            description: "An unexpected error occurred. Please check your connection and try again.",
+            variant: "destructive"
+        });
+    } finally {
         setIsLoading(false);
-    }, 3000);
+    }
   }
 
   return (
@@ -97,6 +122,11 @@ export default function DepositPage() {
                 <p className="text-sm text-green-400 mt-2">You will deposit approximately <span className="font-bold">KES {kesAmount.toFixed(2)}</span>.</p>
             )}
           </div>
+          {message && (
+            <div className="p-4 bg-blue-900/50 border border-blue-700 rounded-lg text-blue-300 text-sm">
+                {message}
+            </div>
+          )}
           <div>
             <button type="submit" disabled={isLoading} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:bg-blue-800">
               {isLoading ? <span className="loader h-5 w-5 border-2 rounded-full"></span> : 'Deposit Now'}
