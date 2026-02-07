@@ -181,6 +181,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await api.authorize(token);
+
+      console.log('=== DERIV API RESPONSE ===');
+      console.log('Full response:', response);
+      console.log('Authorize data:', response.authorize);
+      console.log('Account list:', response.authorize?.account_list);
       
       if (response.error) {
         console.error("❌ Auth failed:", response.error.message);
@@ -188,6 +193,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const authData = response.authorize as DerivUser;
+
+      console.log('=== USER DATA ===');
+      console.log('Full user:', authData);
+      console.log('Email:', authData.email);
+      console.log('All accounts:', authData.account_list);
 
       const authorizedLoginId = authData.loginid;
       const mainAccount = authData.account_list?.find(acc => acc.loginid === authorizedLoginId);
@@ -199,11 +209,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (mainAccount.is_virtual === 0) {
             setSelectedAccount(mainAccount);
+            console.log('=== SELECTED ACCOUNT ===');
+            console.log('Real account found:', mainAccount);
+            console.log('Account ID:', mainAccount.loginid);
+            console.log('Currency:', mainAccount.currency);
+            console.log('Balance:', mainAccount.balance);
+            console.log('Balance type:', typeof mainAccount.balance);
       } else {
           const realAccount = authData.account_list?.find(acc => acc.is_virtual === 0);
           if (realAccount) {
               console.warn("⚠️ User logged in with virtual account, switching to first real account:", realAccount.loginid);
               setSelectedAccount(realAccount);
+              console.log('=== SELECTED ACCOUNT ===');
+              console.log('Real account found:', realAccount);
+              console.log('Account ID:', realAccount.loginid);
+              console.log('Currency:', realAccount.currency);
+              console.log('Balance:', realAccount.balance);
+              console.log('Balance type:', typeof realAccount.balance);
           } else {
               console.error("❌ User logged in with a virtual account, and no real accounts were found.");
               return false;
