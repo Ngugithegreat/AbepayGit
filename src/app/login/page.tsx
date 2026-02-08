@@ -1,12 +1,13 @@
+
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -31,8 +32,10 @@ export default function LoginPage() {
         description: 'There was an error during the linking process. Please try again.',
         variant: 'destructive',
       });
+      // Clean up the URL
+      router.replace('/login', { scroll: false });
     }
-  }, [searchParams, toast]);
+  }, [searchParams, toast, router]);
 
   // Construct the Deriv OAuth URL for the "Sign Up" link
   useEffect(() => {
@@ -53,11 +56,7 @@ export default function LoginPage() {
   
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
-    // This is the simulated login.
-    // We check if a user is stored in the context (which reads from localStorage)
-    // and if the entered email matches. The password is ignored for security.
     if (user && user.email.toLowerCase() === email.toLowerCase()) {
-      // User is "authenticated" because they knew the email associated with the stored token.
       router.replace('/dashboard');
     } else {
       toast({
@@ -148,5 +147,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
   );
 }

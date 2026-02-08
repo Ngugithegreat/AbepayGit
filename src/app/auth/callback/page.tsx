@@ -1,10 +1,11 @@
+
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
-export default function AuthCallbackPage() {
+function AuthCallbackHandler() {
   const searchParams = useSearchParams();
   const hasRun = useRef(false);
 
@@ -38,12 +39,21 @@ export default function AuthCallbackPage() {
     }, 500);
   }, [searchParams]);
 
+  // This component's purpose is the redirection side-effect, so it doesn't need to render anything.
+  return null;
+}
+
+export default function AuthCallbackPage() {
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-slate-900">
-      <div className="text-center">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
-        <p className="text-xl text-slate-300">Completing login...</p>
+    <Suspense fallback={
+      <div className="flex h-screen w-full items-center justify-center bg-slate-900">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
+          <p className="text-xl text-slate-300">Completing login...</p>
+        </div>
       </div>
-    </div>
+    }>
+      <AuthCallbackHandler />
+    </Suspense>
   );
 }
