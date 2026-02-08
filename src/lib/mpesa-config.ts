@@ -4,8 +4,8 @@
 export const MPESA_CONFIG = {
   // Sandbox credentials (for testing)
   SANDBOX: {
-    CONSUMER_KEY: 'bCGR2Chy7fYP33xVAE76Act2DkZgldut',
-    CONSUMER_SECRET: '7seqLATsgmmvpkAa',
+    CONSUMER_KEY: 'CcwvORv0jGpGL7KeEo3iL5v0A7n7A0qG',
+    CONSUMER_SECRET: 'u3dGx1GM4nG0kDdM',
     SHORTCODE: '174379',
     PASSKEY: 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919',
     AUTH_URL: 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
