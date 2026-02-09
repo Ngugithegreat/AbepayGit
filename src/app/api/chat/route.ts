@@ -2,6 +2,10 @@ import { chatFlow } from '@/ai/flows/chat-flow';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
+  console.log('API Key exists:', !!process.env.GOOGLE_AI_API_KEY);
+  console.log('API Key length:', process.env.GOOGLE_AI_API_KEY?.length);
+  console.log('API Key starts with:', process.env.GOOGLE_AI_API_KEY?.substring(0, 10));
+
   const { history, message } = await req.json();
 
   if (!message) {
