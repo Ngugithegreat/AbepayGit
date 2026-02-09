@@ -177,7 +177,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
     if (!appId) {
-      console.error("❌ No App ID");
       setIsLoading(false);
       return;
     }
