@@ -65,7 +65,9 @@ export default function ChatWidget() {
       });
 
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        const errorData = await response.json().catch(() => null);
+        const serverMessage = errorData?.error || 'Network response was not ok';
+        throw new Error(serverMessage);
       }
 
       const data = await response.json();
@@ -80,7 +82,7 @@ export default function ChatWidget() {
       const errorMessage: Message = {
         id: uuidv4(),
         role: 'model',
-        content: "Sorry, I'm having trouble connecting. Please try again later.",
+        content: error instanceof Error ? error.message : "Sorry, I'm having trouble connecting. Please try again later.",
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
