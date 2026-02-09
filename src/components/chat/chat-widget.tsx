@@ -65,8 +65,17 @@ export default function ChatWidget() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        const serverMessage = errorData?.error || 'Network response was not ok';
+        let serverMessage = 'Network response was not ok';
+        try {
+            const errorData = await response.json();
+            if (errorData && errorData.error) {
+                serverMessage = errorData.error;
+            }
+        } catch (jsonError) {
+            // The response was not JSON. It might be a server crash page.
+            console.error("Could not parse error response as JSON:", jsonError);
+            serverMessage = "The server returned an unexpected error. Please check the server logs."
+        }
         throw new Error(serverMessage);
       }
 
