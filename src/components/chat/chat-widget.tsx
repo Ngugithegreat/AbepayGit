@@ -55,11 +55,10 @@ export default function ChatWidget() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/chat-simple', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          history: messages.map(({ id, ...rest }) => rest), // Don't send id to API
           message: input,
         }),
       });
