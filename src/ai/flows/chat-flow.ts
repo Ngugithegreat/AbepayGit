@@ -20,7 +20,7 @@ export const chatFlow = ai.defineFlow(
     outputSchema: z.string(),
   },
   async (input) => {
-    // We are using the Gemini Pro model for this chat.
+    // We are using the Gemini 1.5 Flash model for this chat.
     const model = 'googleai/gemini-1.5-flash';
 
     // Call the model with the chat history.
