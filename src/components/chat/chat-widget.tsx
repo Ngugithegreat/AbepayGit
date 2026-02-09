@@ -88,10 +88,17 @@ export default function ChatWidget() {
       setMessages((prev) => [...prev, modelMessage]);
     } catch (error) {
       console.error('Failed to get response:', error);
+      let friendlyErrorMessage = "Sorry, I'm having trouble connecting. Please try again later.";
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+          friendlyErrorMessage = "I can't connect to the server. It might be offline or there's a network issue. Please check the server logs and restart it if necessary.";
+      } else if (error instanceof Error) {
+          friendlyErrorMessage = error.message;
+      }
+      
       const errorMessage: Message = {
         id: uuidv4(),
         role: 'model',
-        content: error instanceof Error ? error.message : "Sorry, I'm having trouble connecting. Please try again later.",
+        content: friendlyErrorMessage,
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
