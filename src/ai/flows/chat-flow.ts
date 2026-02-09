@@ -50,10 +50,11 @@ export const chatFlow = ai.defineFlow(
           content: [{ text: msg.content }],
         })) || [];
 
-      // Generate response using Genkit with the correct model string
+      // Generate response using Genkit with the correct format
       const result = await ai.generate({
         model: 'googleai/gemini-pro', // Using stable model
-        prompt: `${SYSTEM_PROMPT}\n\nUser: ${input.message}\n\nAssistant:`,
+        system: SYSTEM_PROMPT,
+        prompt: input.message,
         history: history,
         config: {
           temperature: 0.7,
