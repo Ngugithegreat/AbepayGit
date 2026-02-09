@@ -1,7 +1,7 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit/zod';
+import { z } from 'zod';
 
 // We are defining the data structure of the messages that will be exchanged in the chat.
 const messageSchema = z.object({
