@@ -29,7 +29,7 @@ Common topics you help with:
 - Account verification
 - Contact support
 
-Be friendly, concise, and helpful. Always provide step-by-step instructions when explaining processes.`;
+Be friendly, concise, and helpful.`;
 
 // Define the chat flow
 export const chatFlow = ai.defineFlow(
@@ -43,20 +43,17 @@ export const chatFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const model = 'googleai/gemini-pro';
-
-      // Convert history to the format Genkit expects
+      // Convert history to Genkit format if it exists
       const history =
         input.history?.map((msg) => ({
           role: msg.role,
           content: [{ text: msg.content }],
         })) || [];
 
-      // Generate response using Genkit
+      // Generate response using Genkit with the correct model string
       const result = await ai.generate({
-        model,
-        system: SYSTEM_PROMPT,
-        prompt: input.message,
+        model: 'googleai/gemini-pro', // Using stable model
+        prompt: `${SYSTEM_PROMPT}\n\nUser: ${input.message}\n\nAssistant:`,
         history: history,
         config: {
           temperature: 0.7,
