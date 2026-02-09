@@ -26,6 +26,18 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config, { isServer }) => {
+    // This is to fix a build error with Genkit's tracing dependencies.
+    // Since we are not using tracing, we can safely exclude them from the bundle.
+    if (isServer) {
+      config.externals.push(
+        '@opentelemetry/sdk-node',
+        'require-in-the-middle',
+        '@opentelemetry/instrumentation'
+      );
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;
