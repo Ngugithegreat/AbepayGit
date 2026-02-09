@@ -9,6 +9,7 @@ export const ai = genkit({
   plugins: [
     googleAI({
       apiVersion: 'v1beta',
+      apiKey: process.env.GOOGLE_AI_API_KEY,
     }),
   ],
   logSinks: [],
