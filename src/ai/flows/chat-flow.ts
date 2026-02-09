@@ -43,7 +43,7 @@ export const chatFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const model = 'googleai/gemini-1.5-flash-latest';
+      const model = 'googleai/gemini-pro';
 
       // Convert history to the format Genkit expects
       const history =
