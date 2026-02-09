@@ -4,29 +4,29 @@
 export const MPESA_CONFIG = {
   // Sandbox credentials (for testing)
   SANDBOX: {
-    CONSUMER_KEY: 'CcwvORv0jGpGL7KeEo3iL5v0A7n7A0qG',
-    CONSUMER_SECRET: 'u3dGx1GM4nG0kDdM',
-    SHORTCODE: '174379',
-    PASSKEY: 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919',
+    CONSUMER_KEY: process.env.MPESA_SANDBOX_CONSUMER_KEY || '',
+    CONSUMER_SECRET: process.env.MPESA_SANDBOX_CONSUMER_SECRET || '',
+    SHORTCODE: process.env.NEXT_PUBLIC_MPESA_SANDBOX_SHORTCODE || '174379',
+    PASSKEY: process.env.MPESA_SANDBOX_PASSKEY || '',
     AUTH_URL: 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
     STK_PUSH_URL: 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
   },
   
   // Production credentials (for live - use when ready)
   PRODUCTION: {
-    CONSUMER_KEY: 'bCGR2Chy7fYP33xVAE76Act2DkZgldut', // Same for now
-    CONSUMER_SECRET: '7seqLATsgmmvpkAa', // Same for now
-    SHORTCODE: '4098227', // Your real paybill
-    PASSKEY: '', // Get from Safaricom when going live
+    CONSUMER_KEY: process.env.MPESA_PRODUCTION_CONSUMER_KEY || '',
+    CONSUMER_SECRET: process.env.MPESA_PRODUCTION_CONSUMER_SECRET || '',
+    SHORTCODE: process.env.NEXT_PUBLIC_MPESA_PRODUCTION_SHORTCODE || '',
+    PASSKEY: process.env.MPESA_PRODUCTION_PASSKEY || '',
     AUTH_URL: 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
     STK_PUSH_URL: 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
   },
   
   // Current environment (change to 'PRODUCTION' when ready to go live)
-  CURRENT_ENV: 'SANDBOX' as 'SANDBOX' | 'PRODUCTION',
+  CURRENT_ENV: (process.env.MPESA_ENV as 'SANDBOX' | 'PRODUCTION') || 'SANDBOX',
   
   // Callback URL (where M-Pesa sends payment confirmation)
-  CALLBACK_URL: 'https://9000-firebase-studio-1769728259584.cluster-64pjnskmlbaxowh5lzq6i7v4ra.cloudworkstations.dev/api/mpesa/callback',
+  CALLBACK_URL: process.env.NEXT_PUBLIC_MPESA_CALLBACK_URL || 'https://example.com/api/mpesa/callback',
   
   // Transaction descriptions
   ACCOUNT_REFERENCE: 'ABEPAY',
@@ -35,7 +35,14 @@ export const MPESA_CONFIG = {
 
 // Get current environment config
 export function getMpesaConfig() {
-  return MPESA_CONFIG[MPESA_CONFIG.CURRENT_ENV];
+  const env = MPESA_CONFIG.CURRENT_ENV;
+  const config = MPESA_CONFIG[env];
+  
+  if(env !== 'PRODUCTION' && (!config.CONSUMER_KEY || !config.CONSUMER_SECRET || !config.PASSKEY)){
+      console.warn(`⚠️ WARNING: M-Pesa configuration for ${env} is missing some values. Please check your environment variables.`);
+  }
+
+  return config;
 }
 
 // Generate M-Pesa password (required for STK Push)

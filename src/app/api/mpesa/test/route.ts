@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
+import { getMpesaConfig } from '@/lib/mpesa-config';
 
 export async function GET() {
   try {
-    const consumerKey = 'bCGR2Chy7fYP33xVAE76Act2DkZgldut';
-    const consumerSecret = '7seqLATsgmmvpkAa';
-    const authUrl = 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials';
+    const config = getMpesaConfig();
+    const consumerKey = config.CONSUMER_KEY;
+    const consumerSecret = config.CONSUMER_SECRET;
+    const authUrl = config.AUTH_URL;
     
     const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
     
