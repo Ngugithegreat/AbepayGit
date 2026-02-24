@@ -1,47 +1,64 @@
 // M-Pesa Daraja API Configuration
-// This file contains all M-Pesa credentials and helper functions
 
 export const MPESA_CONFIG = {
-  // Sandbox credentials (for testing)
-  SANDBOX: {
-    CONSUMER_KEY: process.env.MPESA_SANDBOX_CONSUMER_KEY || '',
-    CONSUMER_SECRET: process.env.MPESA_SANDBOX_CONSUMER_SECRET || '',
-    SHORTCODE: process.env.NEXT_PUBLIC_MPESA_SANDBOX_SHORTCODE || '174379',
-    PASSKEY: process.env.MPESA_SANDBOX_PASSKEY || '',
-    AUTH_URL: 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
-    STK_PUSH_URL: 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
-  },
-  
-  // Production credentials (for live - use when ready)
+  // Production credentials (from environment variables)
   PRODUCTION: {
-    CONSUMER_KEY: process.env.MPESA_PRODUCTION_CONSUMER_KEY || '',
-    CONSUMER_SECRET: process.env.MPESA_PRODUCTION_CONSUMER_SECRET || '',
-    SHORTCODE: process.env.NEXT_PUBLIC_MPESA_PRODUCTION_SHORTCODE || '',
-    PASSKEY: process.env.MPESA_PRODUCTION_PASSKEY || '',
+    CONSUMER_KEY: process.env.MPESA_CONSUMER_KEY || '',
+    CONSUMER_SECRET: process.env.MPESA_CONSUMER_SECRET || '',
+    SHORTCODE: process.env.MPESA_SHORTCODE || '4098227',
+    PASSKEY: process.env.MPESA_PASSKEY || '',
     AUTH_URL: 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
     STK_PUSH_URL: 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
   },
   
-  // Current environment (change to 'PRODUCTION' when ready to go live)
-  CURRENT_ENV: (process.env.MPESA_ENV as 'SANDBOX' | 'PRODUCTION') || 'SANDBOX',
+  // Sandbox credentials (for testing - not used)
+  SANDBOX: {
+    CONSUMER_KEY: '',
+    CONSUMER_SECRET: '',
+    SHORTCODE: '174379',
+    PASSKEY: 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919',
+    AUTH_URL: 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
+    STK_PUSH_URL: 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
+  },
   
-  // Callback URL (where M-Pesa sends payment confirmation)
-  CALLBACK_URL: process.env.NEXT_PUBLIC_MPESA_CALLBACK_URL || 'https://example.com/api/mpesa/callback',
+  // Current environment (ALWAYS use PRODUCTION)
+  CURRENT_ENV: 'PRODUCTION' as 'SANDBOX' | 'PRODUCTION',
   
-  // Transaction descriptions
+  // Callback URL
+  CALLBACK_URL: (process.env.NEXT_PUBLIC_APP_URL || 'https://abepay-git-auib.vercel.app') + '/api/mpesa/callback',
+  
+  // Transaction details
   ACCOUNT_REFERENCE: 'ABEPAY',
   TRANSACTION_DESC: 'Deriv Deposit via ABEPAY',
 };
 
 // Get current environment config
 export function getMpesaConfig() {
-  const env = MPESA_CONFIG.CURRENT_ENV;
-  const config = MPESA_CONFIG[env];
+  const config = MPESA_CONFIG[MPESA_CONFIG.CURRENT_ENV];
   
-  if(env !== 'PRODUCTION' && (!config.CONSUMER_KEY || !config.CONSUMER_SECRET || !config.PASSKEY)){
-      console.warn(`⚠️ WARNING: M-Pesa configuration for ${env} is missing some values. Please check your environment variables.`);
+  // Log configuration status (without exposing actual keys)
+  console.log('🔧 M-Pesa Config Status:', {
+    environment: MPESA_CONFIG.CURRENT_ENV,
+    hasConsumerKey: !!config.CONSUMER_KEY && config.CONSUMER_KEY.length > 0,
+    hasConsumerSecret: !!config.CONSUMER_SECRET && config.CONSUMER_SECRET.length > 0,
+    hasPasskey: !!config.PASSKEY && config.PASSKEY.length > 0,
+    shortcode: config.SHORTCODE,
+    consumerKeyLength: config.CONSUMER_KEY?.length,
+    consumerSecretLength: config.CONSUMER_SECRET?.length,
+    passkeyLength: config.PASSKEY?.length,
+  });
+  
+  // Validate that all required credentials are present
+  if (!config.CONSUMER_KEY || config.CONSUMER_KEY.length === 0) {
+    console.error('❌ MPESA_CONSUMER_KEY is not set in environment variables!');
   }
-
+  if (!config.CONSUMER_SECRET || config.CONSUMER_SECRET.length === 0) {
+    console.error('❌ MPESA_CONSUMER_SECRET is not set in environment variables!');
+  }
+  if (!config.PASSKEY || config.PASSKEY.length === 0) {
+    console.error('❌ MPESA_PASSKEY is not set in environment variables!');
+  }
+  
   return config;
 }
 
