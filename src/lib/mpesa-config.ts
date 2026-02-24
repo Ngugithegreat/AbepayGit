@@ -22,7 +22,7 @@ export const MPESA_CONFIG = {
   },
   
   // Current environment (ALWAYS use PRODUCTION)
-  CURRENT_ENV: 'PRODUCTION' as 'SANDBOX' | 'PRODUCTION',
+  CURRENT_ENV: (process.env.MPESA_ENVIRONMENT || 'PRODUCTION') as 'SANDBOX' | 'PRODUCTION',
   
   // Callback URL
   CALLBACK_URL: (process.env.NEXT_PUBLIC_APP_URL || 'https://abepay-git-auib.vercel.app') + '/api/mpesa/callback',
