@@ -34,15 +34,20 @@ export const MPESA_CONFIG = {
 
 // Get current environment config
 export function getMpesaConfig() {
-  const config = MPESA_CONFIG[MPESA_CONFIG.CURRENT_ENV];
+  // FORCE PRODUCTION if environment variable is set
+  const environment = process.env.MPESA_ENVIRONMENT === 'sandbox' ? 'SANDBOX' : 'PRODUCTION';
   
-  // Log configuration status (without exposing actual keys)
+  console.log('🔧 Using environment:', environment);
+  
+  const config = MPESA_CONFIG[environment];
+  
   console.log('🔧 M-Pesa Config Status:', {
-    environment: MPESA_CONFIG.CURRENT_ENV,
+    environment: environment,
+    shortcode: config.SHORTCODE,
+    authUrl: config.AUTH_URL,
     hasConsumerKey: !!config.CONSUMER_KEY && config.CONSUMER_KEY.length > 0,
     hasConsumerSecret: !!config.CONSUMER_SECRET && config.CONSUMER_SECRET.length > 0,
     hasPasskey: !!config.PASSKEY && config.PASSKEY.length > 0,
-    shortcode: config.SHORTCODE,
     consumerKeyLength: config.CONSUMER_KEY?.length,
     consumerSecretLength: config.CONSUMER_SECRET?.length,
     passkeyLength: config.PASSKEY?.length,
@@ -50,13 +55,13 @@ export function getMpesaConfig() {
   
   // Validate that all required credentials are present
   if (!config.CONSUMER_KEY || config.CONSUMER_KEY.length === 0) {
-    console.error('❌ MPESA_CONSUMER_KEY is not set in environment variables!');
+    throw new Error('MPESA_CONSUMER_KEY is not set in environment variables!');
   }
   if (!config.CONSUMER_SECRET || config.CONSUMER_SECRET.length === 0) {
-    console.error('❌ MPESA_CONSUMER_SECRET is not set in environment variables!');
+    throw new Error('MPESA_CONSUMER_SECRET is not set in environment variables!');
   }
   if (!config.PASSKEY || config.PASSKEY.length === 0) {
-    console.error('❌ MPESA_PASSKEY is not set in environment variables!');
+    throw new Error('MPESA_PASSKEY is not set in environment variables!');
   }
   
   return config;
