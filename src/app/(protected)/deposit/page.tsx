@@ -53,7 +53,8 @@ export default function DepositPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 phone: phone,
-                amount: kesAmount
+                amount: kesAmount,
+                loginid: selectedAccount.loginid
             })
         });
 
