@@ -2,11 +2,12 @@
 'use client';
 
 import { Suspense, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 function AuthCallbackHandler() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const hasRun = useRef(false);
 
   useEffect(() => {
@@ -20,24 +21,25 @@ function AuthCallbackHandler() {
 
     if (error) {
       console.error('❌ Auth error:', error);
-      window.location.href = '/login?error=auth_failed';
+      router.push('/login?error=auth_failed');
       return;
     }
 
     if (!token) {
       console.error('❌ No token found');
-      window.location.href = '/login?error=auth_failed';
+      router.push('/login?error=auth_failed');
       return;
     }
 
     console.log('✅ Token received');
     localStorage.setItem('deriv_token', token);
     
-    console.log('🚀 Redirecting to dashboard');
+    console.log('🚀 Redirecting to confirmation page');
     setTimeout(() => {
-      window.location.href = '/dashboard';
+      // New user flow: redirect to confirm details
+      router.push('/deriv-confirmation');
     }, 500);
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   // This component's purpose is the redirection side-effect, so it doesn't need to render anything.
   return null;

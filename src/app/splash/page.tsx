@@ -1,26 +1,25 @@
+
 'use client';
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AbepayLogo } from '@/components/branding/abepay-logo';
 
 export default function SplashScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is already logged in
     const checkAuth = async () => {
-      // Wait for splash animation
       await new Promise(resolve => setTimeout(resolve, 2500));
       
-      // Check localStorage for existing session
-      const hasSession = localStorage.getItem('deriv_user');
+      // Check if user has completed setup (has password)
+      const hasPassword = localStorage.getItem('user_has_password');
+      const userName = localStorage.getItem('user_name');
       
-      if (hasSession) {
-        // Returning user - go to biometric login
+      if (hasPassword && userName) {
+        // Returning user
         router.push('/welcome-back');
       } else {
-        // New user - go to regular login
+        // New user or incomplete setup
         router.push('/login');
       }
     };
@@ -29,28 +28,33 @@ export default function SplashScreen() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-blue-700 flex items-center justify-center">
       <div className="text-center space-y-8 animate-fade-in">
-        {/* Logo with animation */}
+        {/* Logo */}
         <div className="animate-scale-in">
-          <AbepayLogo size="xl" />
+          <div className="flex flex-col items-center gap-4">
+            {/* Logo Icon */}
+            <div className="w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-2xl">
+              <span className="text-6xl font-black text-white">A</span>
+            </div>
+            {/* App Name */}
+            <h1 className="text-5xl font-black text-white tracking-tight">
+              ABEPAY
+            </h1>
+          </div>
         </div>
 
         {/* Tagline */}
-        <div className="space-y-2 animate-slide-up">
-          <p className="text-xl text-gray-600 font-medium">
-            Instant Transactions
-          </p>
-          <p className="text-lg text-gray-500">
-            Without Wasting Time
-          </p>
+        <div className="space-y-1 animate-slide-up text-white/90">
+          <p className="text-xl font-medium">Instant Transactions</p>
+          <p className="text-lg">Without Wasting Time</p>
         </div>
 
-        {/* Loading indicator */}
-        <div className="flex justify-center gap-2">
-          <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-          <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        {/* Loading dots */}
+        <div className="flex justify-center gap-2 pt-8">
+          <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+          <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+          <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
         </div>
       </div>
     </div>
