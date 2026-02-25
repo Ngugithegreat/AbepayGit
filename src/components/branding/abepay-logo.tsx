@@ -23,24 +23,21 @@ export function AbepayLogo({ size = 'md', showText = true, className = '' }: Log
       {/* Logo Icon - Gradient A */}
       <div 
         style={{ width: currentSize.icon, height: currentSize.icon }}
-        className="relative flex items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-400 shadow-xl"
+        className="relative flex items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 shadow-xl"
       >
         <span className="text-white font-black" style={{ fontSize: currentSize.icon * 0.5 }}>
           A
         </span>
         
         {/* Animated pulse effect */}
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-300 animate-pulse opacity-30" />
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 animate-pulse opacity-30" />
       </div>
 
       {/* App Name */}
       {showText && (
-        <div className="flex flex-col">
+        <div className="flex flex-col justify-center">
           <span className={`font-black bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent ${currentSize.text}`}>
             ABEPAY
-          </span>
-          <span className="text-xs text-gray-500 font-medium -mt-1">
-            Payment Agent
           </span>
         </div>
       )}
