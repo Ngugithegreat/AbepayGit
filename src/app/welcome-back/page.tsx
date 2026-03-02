@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,33 +5,37 @@ import { useRouter } from 'next/navigation';
 
 export default function WelcomeBackPage() {
   const router = useRouter();
-  const [userName, setUserName] = useState('User');
+  const [firstName, setFirstName] = useState('User');
 
   useEffect(() => {
-    // Get first name from localStorage
+    // Get user's FIRST NAME only (not "Mr" or "Ms")
     const fullName = localStorage.getItem('user_name') || 'User';
-    const firstName = fullName.split(' ')[0];
-    setUserName(firstName);
+    
+    // Extract first name
+    // If name is "Mr Paul Mureithi", extract "Paul"
+    // If name is "George Smith", extract "George"
+    const nameParts = fullName.split(' ');
+    
+    // Remove titles like Mr, Ms, Mrs, Dr
+    const titles = ['Mr', 'Ms', 'Mrs', 'Dr', 'Prof'];
+    const filteredParts = nameParts.filter(part => !titles.includes(part));
+    
+    // Get first actual name
+    const actualFirstName = filteredParts[0] || 'User';
+    setFirstName(actualFirstName);
   }, []);
 
   const handleLogin = async () => {
-    // Check if biometric is enabled
     const biometricEnabled = localStorage.getItem('biometric_enabled') === 'true';
     
     if (biometricEnabled && window.PublicKeyCredential) {
       try {
-        // Attempt biometric authentication
-        // For now, simulate
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Success - go to dashboard
         router.push('/dashboard');
       } catch (error) {
-        // Biometric failed - go to password login
         router.push('/password-login');
       }
     } else {
-      // No biometric - go to password login
       router.push('/password-login');
     }
   };
@@ -40,21 +43,20 @@ export default function WelcomeBackPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-blue-700 flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-md space-y-12">
-        {/* Logo */}
-        <div className="text-center space-y-3">
-          <div className="flex justify-center mb-6">
+        {/* Logo - Just A with ABEPAY */}
+        <div className="text-center space-y-4">
+          <div className="flex justify-center mb-4">
             <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <span className="text-5xl font-black text-white">A</span>
             </div>
           </div>
           <h1 className="text-4xl font-black text-white">ABEPAY</h1>
-          <p className="text-white/80 text-sm">Payment Agent KE</p>
         </div>
 
-        {/* Welcome Message */}
+        {/* Welcome Message with FIRST NAME */}
         <div className="text-center space-y-4">
           <h2 className="text-3xl font-bold text-white">
-            Hi {userName}
+            Hi {firstName} 👋
           </h2>
         </div>
 
