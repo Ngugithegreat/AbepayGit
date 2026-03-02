@@ -8,20 +8,20 @@ export default function DepositPage() {
   const { selectedAccount } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [depositAmount, setDepositAmount] = useState('');
+  const [kesAmount, setKesAmount] = useState('');
+  const [usdAmount, setUsdAmount] = useState(0);
   const [phone, setPhone] = useState('');
-  const [kesAmount, setKesAmount] = useState(0);
   const [message, setMessage] = useState('');
   const exchangeRate = 130; // Example rate
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const usd = e.target.value;
-    setDepositAmount(usd);
+    const kes = e.target.value;
+    setKesAmount(kes);
     setMessage('');
-    if (usd && !isNaN(parseFloat(usd))) {
-        setKesAmount(parseFloat(usd) * exchangeRate);
+    if (kes && !isNaN(parseFloat(kes))) {
+        setUsdAmount(parseFloat(kes) / exchangeRate);
     } else {
-        setKesAmount(0);
+        setUsdAmount(0);
     }
   }
 
@@ -35,10 +35,11 @@ export default function DepositPage() {
         });
         return;
     }
-    if (kesAmount < 1) {
+    const kesAmountNumber = parseFloat(kesAmount);
+    if (usdAmount < 1) {
         toast({
             title: "Error",
-            description: "Amount must be at least KES 1.",
+            description: `Minimum deposit is KES ${exchangeRate} (equivalent to $1 USD).`,
             variant: "destructive"
         });
         return;
@@ -53,7 +54,7 @@ export default function DepositPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 phone: phone,
-                amount: kesAmount,
+                amount: kesAmountNumber,
                 loginid: selectedAccount.loginid
             })
         });
@@ -108,19 +109,19 @@ export default function DepositPage() {
             </div>
           </div>
           <div>
-            <label htmlFor="depositAmount" className="block text-sm font-medium text-gray-300 mb-1">Amount (USD)</label>
+            <label htmlFor="depositAmount" className="block text-sm font-medium text-gray-300 mb-1">Amount (KES)</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-400 sm:text-sm">$</span>
+                <span className="text-gray-400 sm:text-sm">KES</span>
               </div>
-              <input type="number" id="depositAmount" value={depositAmount} onChange={handleAmountChange} required min="1" max="5000" placeholder="0.00" className="pl-8 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
+              <input type="number" id="depositAmount" value={kesAmount} onChange={handleAmountChange} required min="1" placeholder="0" className="pl-12 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
             </div>
             <div className="text-xs text-gray-500 mt-2 flex justify-between">
-                <span>Min: $1.00, Max: $5000.00</span>
+                <span>Min: {exchangeRate} KES</span>
                 <span className="font-medium text-gray-400">Rate: 1 USD ≈ {exchangeRate} KES</span>
             </div>
-             {kesAmount > 0 && (
-                <p className="text-sm text-green-400 mt-2">You will deposit approximately <span className="font-bold">KES {kesAmount.toFixed(2)}</span>.</p>
+             {usdAmount > 0 && (
+                <p className="text-sm text-green-400 mt-2">You will deposit approximately <span className="font-bold">${usdAmount.toFixed(2)} USD</span>.</p>
             )}
           </div>
           {message && (
@@ -144,7 +145,7 @@ export default function DepositPage() {
           </li>
           <li className="flex items-start">
             <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">2</span>
-            <span>Enter the amount in USD you wish to deposit (Min: $1.00).</span>
+            <span>Enter the amount in KES you wish to deposit (Min: {exchangeRate}).</span>
           </li>
           <li className="flex items-start">
             <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">3</span>
