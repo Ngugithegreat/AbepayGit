@@ -1,27 +1,109 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, DollarSign, AlertCircle, TrendingUp, Settings } from 'lucide-react';
+import { Users, DollarSign, AlertCircle, TrendingUp, Settings, Lock } from 'lucide-react';
 
 export default function AdminDashboard() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  
+  // Admin password (in production, this should be in environment variables)
+  const ADMIN_PASSWORD = 'abepay2026';
+
+  // Stats and rates state
   const [stats, setStats] = useState({
     totalUsers: 0,
     pendingDeposits: 0,
     totalVolume: 0,
     activeTransactions: 0,
   });
-
   const [depositRate, setDepositRate] = useState(130);
   const [withdrawRate, setWithdrawRate] = useState(124);
 
+  useEffect(() => {
+    // Check if already authenticated in this session
+    const authenticated = sessionStorage.getItem('admin_authenticated');
+    if (authenticated === 'true') {
+      setIsAuthenticated(true);
+    }
+    
+    // Load rates from localStorage
+    const savedDepositRate = localStorage.getItem('deposit_rate');
+    if (savedDepositRate) {
+      setDepositRate(Number(savedDepositRate));
+    }
+    const savedWithdrawRate = localStorage.getItem('withdraw_rate');
+    if (savedWithdrawRate) {
+      setWithdrawRate(Number(savedWithdrawRate));
+    }
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (password === ADMIN_PASSWORD) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('admin_authenticated', 'true');
+    } else {
+      alert('Incorrect password');
+      setPassword('');
+    }
+  };
+
   const handleUpdateRates = () => {
-    // Save new rates
     localStorage.setItem('deposit_rate', depositRate.toString());
     localStorage.setItem('withdraw_rate', withdrawRate.toString());
     alert('Rates updated successfully!');
   };
 
+  // Password prompt screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-6">
+        <div className="w-full max-w-md bg-gray-800 rounded-2xl p-8 shadow-2xl">
+          <div className="text-center space-y-6">
+            {/* Icon */}
+            <div className="flex justify-center">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center">
+                <Lock className="w-10 h-10 text-white" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <div>
+              <h1 className="text-2xl font-bold text-white mb-2">Admin Access</h1>
+              <p className="text-gray-400 text-sm">ABEPAY Backoffice</p>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleLogin} className="space-y-4">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter admin password"
+                className="w-full h-14 px-4 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                required
+              />
+              
+              <button
+                type="submit"
+                className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl font-semibold text-lg shadow-xl transition-all"
+              >
+                Login to Admin
+              </button>
+            </form>
+
+            <p className="text-xs text-gray-500">
+              Default password: abepay2026
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render the full dashboard if authenticated
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">

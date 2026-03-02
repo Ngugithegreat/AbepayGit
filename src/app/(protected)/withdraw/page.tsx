@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/context/auth-context';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function WithdrawPage() {
@@ -11,7 +11,14 @@ export default function WithdrawPage() {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [phone, setPhone] = useState('');
   const [kesAmount, setKesAmount] = useState(0);
-  const exchangeRate = 128; // Example rate
+  const [exchangeRate, setExchangeRate] = useState(128); // Default rate
+
+  useEffect(() => {
+    const savedRate = localStorage.getItem('withdraw_rate');
+    if (savedRate) {
+      setExchangeRate(Number(savedRate));
+    }
+  }, []);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const usd = e.target.value;

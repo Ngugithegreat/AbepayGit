@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/context/auth-context';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function DepositPage() {
@@ -12,7 +12,14 @@ export default function DepositPage() {
   const [usdAmount, setUsdAmount] = useState(0);
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
-  const exchangeRate = 130; // Example rate
+  const [exchangeRate, setExchangeRate] = useState(130); // Default rate
+
+  useEffect(() => {
+    const savedRate = localStorage.getItem('deposit_rate');
+    if (savedRate) {
+      setExchangeRate(Number(savedRate));
+    }
+  }, []);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const kes = e.target.value;
@@ -39,7 +46,7 @@ export default function DepositPage() {
     if (usdAmount < 1) {
         toast({
             title: "Error",
-            description: `Minimum deposit is KES ${exchangeRate} (equivalent to $1 USD).`,
+            description: `Minimum deposit is KES ${exchangeRate.toFixed(2)} (equivalent to $1 USD).`,
             variant: "destructive"
         });
         return;
@@ -117,7 +124,7 @@ export default function DepositPage() {
               <input type="number" id="depositAmount" value={kesAmount} onChange={handleAmountChange} required min="1" placeholder="0" className="pl-12 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
             </div>
             <div className="text-xs text-gray-500 mt-2 flex justify-between">
-                <span>Min: {exchangeRate} KES</span>
+                <span>Min: {exchangeRate.toFixed(2)} KES</span>
                 <span className="font-medium text-gray-400">Rate: 1 USD ≈ {exchangeRate} KES</span>
             </div>
              {usdAmount > 0 && (
@@ -145,7 +152,7 @@ export default function DepositPage() {
           </li>
           <li className="flex items-start">
             <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">2</span>
-            <span>Enter the amount in KES you wish to deposit (Min: {exchangeRate}).</span>
+            <span>Enter the amount in KES you wish to deposit (Min: {exchangeRate.toFixed(2)}).</span>
           </li>
           <li className="flex items-start">
             <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">3</span>
