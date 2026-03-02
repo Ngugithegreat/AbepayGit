@@ -1,177 +1,112 @@
 'use client';
 
+import { useState } from 'react';
 import { useAuth } from '@/context/auth-context';
-import Link from 'next/link';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from 'recharts';
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart';
-
-const chartData = [
-  { day: 'Mon', deposits: 120, withdrawals: 80 },
-  { day: 'Tue', deposits: 190, withdrawals: 120 },
-  { day: 'Wed', deposits: 300, withdrawals: 200 },
-  { day: 'Thu', deposits: 500, withdrawals: 300 },
-  { day: 'Fri', deposits: 200, withdrawals: 150 },
-  { day: 'Sat', deposits: 300, withdrawals: 250 },
-  { day: 'Sun', deposits: 450, withdrawals: 200 },
-];
-
-const chartConfig = {
-  deposits: {
-    label: 'Deposits',
-    color: '#22c55e',
-  },
-  withdrawals: {
-    label: 'Withdrawals',
-    color: '#a855f7',
-  },
-} satisfies ChartConfig;
+import { useRouter } from 'next/navigation';
+import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, selectedAccount } = useAuth();
+  const { user, selectedAccount, isLoading } = useAuth();
+  const router = useRouter();
+  const [showBalance, setShowBalance] = useState(true);
+
+  const balance = selectedAccount?.balance;
 
   return (
     <div className="slide-in">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-gray-400">
-          Welcome back, <span id="userName">{user?.fullname || 'User'}</span>
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="glass-effect rounded-xl p-6 custom-shadow">
-          <div className="flex items-start justify-between">
+        <div className="flex items-center justify-between mb-6">
             <div>
-              <p className="text-gray-400 text-sm">Deriv Balance</p>
-              <h2 className="text-2xl font-bold text-white mt-1">
-                {selectedAccount
-                  ? `${selectedAccount.currency || 'USD'} ${' '}${(
-                      selectedAccount.balance || 0
-                    ).toFixed(2)}`
-                  : '$0.00'}
-              </h2>
+                <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+                <p className="text-gray-400">Welcome back, {user?.fullname || 'User'}</p>
             </div>
-            <div className="bg-blue-500 bg-opacity-20 rounded-full p-3">
-              <i className="fas fa-wallet text-blue-500"></i>
+            <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-400">{selectedAccount?.loginid || 'N/A'}</span>
             </div>
-          </div>
-          <div className="mt-4 text-sm">
-            <span className="text-green-500">
-              <i className="fas fa-arrow-up mr-1"></i>3.5%
-            </span>
-            <span className="text-gray-400 ml-2">from last week</span>
-          </div>
         </div>
 
-        <Link
-          href="/deposit"
-          className="glass-effect rounded-xl p-6 custom-shadow block hover:bg-slate-700/70 transition-colors duration-300"
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-white">Deposit</h3>
-              <p className="text-gray-400 text-sm mt-1">Add funds via M-Pesa</p>
-            </div>
-            <div className="bg-green-500 bg-opacity-20 rounded-full p-3">
-              <i className="fas fa-arrow-down text-green-500"></i>
-            </div>
-          </div>
-          <div className="mt-4 text-sm">
-            <span className="text-green-400 font-medium">
-              Click to start deposit
-            </span>
-          </div>
-        </Link>
-
-        <Link
-          href="/withdraw"
-          className="glass-effect rounded-xl p-6 custom-shadow block hover:bg-slate-700/70 transition-colors duration-300"
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-white">Withdraw</h3>
-              <p className="text-gray-400 text-sm mt-1">Send funds to M-Pesa</p>
-            </div>
-            <div className="bg-purple-500 bg-opacity-20 rounded-full p-3">
-              <i className="fas fa-arrow-up text-purple-500"></i>
-            </div>
-          </div>
-          <div className="mt-4 text-sm">
-            <span className="text-purple-400 font-medium">
-              Click to start withdrawal
-            </span>
-          </div>
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 glass-effect rounded-xl p-6 custom-shadow">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-medium text-white">Transaction Overview</h3>
-            <select className="bg-slate-800 border border-slate-700 rounded-lg text-sm text-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option>Last 7 Days</option>
-              <option>Last 30 Days</option>
-              <option>Last 90 Days</option>
-            </select>
-          </div>
-          <div className="relative h-[250px]">
-            <ChartContainer config={chartConfig} className="h-full w-full">
-              <LineChart data={chartData}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="rgba(71, 85, 105, 0.5)"
-                />
-                <XAxis
-                  dataKey="day"
-                  stroke="#94a3b8"
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis stroke="#94a3b8" tickLine={false} axisLine={false} />
-                <Tooltip
-                  cursor={false}
-                  content={<ChartTooltipContent indicator="dot" />}
-                />
-                <Legend />
-                <Line
-                  dataKey="deposits"
-                  type="monotone"
-                  stroke="var(--color-deposits)"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  dataKey="withdrawals"
-                  type="monotone"
-                  stroke="var(--color-withdrawals)"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ChartContainer>
-          </div>
-        </div>
-
-        <div className="glass-effect rounded-xl p-6 custom-shadow">
-          <h3 className="font-medium text-white mb-4">Recent Transactions</h3>
+        {/* Balance Card */}
+        <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500 rounded-3xl p-8 shadow-2xl mb-8">
           <div className="space-y-4">
-            {/* Recent transactions would be mapped here */}
+            <div className="flex items-center justify-between">
+              <span className="text-white/80 text-sm font-medium">Deriv Balance</span>
+              <button
+                onClick={() => setShowBalance(!showBalance)}
+                className="text-white/80 hover:text-white"
+              >
+                {showBalance ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+              </button>
+            </div>
+            
+            <div className="space-y-1">
+              {isLoading ? (
+                <div className="h-12 bg-white/20 rounded-lg animate-pulse" />
+              ) : (
+                <h2 className="text-5xl font-black text-white">
+                  {showBalance ? `$${balance?.toFixed(2) || '0.00'}` : '••••••'}
+                </h2>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+          <button
+            onClick={() => router.push('/deposit')}
+            className="h-24 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4"
+          >
+            <div className="flex flex-col items-center justify-center gap-2 text-white">
+              <ArrowDownLeft className="w-8 h-8" strokeWidth={2.5} />
+              <span className="font-bold text-lg">Deposit</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => router.push('/withdraw')}
+            className="h-24 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4"
+          >
+            <div className="flex flex-col items-center justify-center gap-2 text-white">
+              <ArrowUpRight className="w-8 h-8" strokeWidth={2.5} />
+              <span className="font-bold text-lg">Withdraw</span>
+            </div>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 space-y-6">
+                <div className="glass-effect rounded-xl p-6 custom-shadow">
+                    <h3 className="font-medium text-white mb-4">Quick Stats</h3>
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-green-900/50 flex items-center justify-center">
+                                <TrendingUp className="w-6 h-6 text-green-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-400">Total Deposits</p>
+                                <p className="text-xl font-bold text-white">$0.00</p>
+                            </div>
+                        </div>
+                         <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-purple-900/50 flex items-center justify-center">
+                                <History className="w-6 h-6 text-purple-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-400">Transactions</p>
+                                <p className="text-xl font-bold text-white">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="lg:col-span-2 glass-effect rounded-xl p-6 custom-shadow">
+                <h3 className="font-medium text-white mb-4">Recent Activity</h3>
+                <div className="text-center py-16 text-gray-500">
+                    <History className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No transactions yet</p>
+                </div>
+            </div>
+        </div>
     </div>
   );
 }
