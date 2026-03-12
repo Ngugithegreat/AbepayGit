@@ -34,59 +34,87 @@ export async function transferToClient(
     });
 
     const apiToken = process.env.DERIV_PAYMENT_AGENT_TOKEN;
+    const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
 
     if (!apiToken) {
-      throw new Error('Deriv API credentials not configured');
+      throw new Error('DERIV_PAYMENT_AGENT_TOKEN not configured');
     }
 
-    // Use Deriv's HTTP API (more reliable for serverless)
-    const response = await fetch('https://api.deriv.com/v1/payment_agent/transfer', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiToken}`,
-      },
-      body: JSON.stringify({
-        paymentagent_transfer: 1,
-        transfer_to: clientAccount,
-        amount: amountUSD,
-        currency: 'USD',
-      }),
-      signal: AbortSignal.timeout(15000), // 15 second timeout
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Deriv API error:', errorText);
-      throw new Error(`Deriv API returned ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
-
-    if (data.error) {
-      console.error('❌ Deriv transfer error:', data.error);
-      return {
-        success: false,
-        error: data.error.message || 'Transfer failed',
-      };
-    }
+    // Use Deriv's WebSocket endpoint via HTTP polling
+    const wsUrl = `wss://ws.derivws.com/websockets/v3?app_id=${appId}`;
     
-    if (data.paymentagent_transfer?.transaction_id) {
-        console.log('✅ Deriv transfer successful:', data);
-        return {
-          success: true,
-          transaction_id: data.paymentagent_transfer.transaction_id,
-        };
-    }
+    // For serverless, we'll use the ws library
+    const { WebSocket } = await import('ws');
+    
+    return new Promise((resolve) => {
+      const ws = new WebSocket(wsUrl);
+      const timeout = setTimeout(() => {
+        ws.close();
+        resolve({ success: false, error: 'Connection timeout' });
+      }, 20000);
 
-    throw new Error('Transfer response did not contain expected data.');
+      let authorized = false;
 
+      ws.on('open', () => {
+        console.log('🔌 WebSocket connected, authorizing...');
+        ws.send(JSON.stringify({ authorize: apiToken }));
+      });
+
+      ws.on('message', (data: any) => {
+        const response = JSON.parse(data.toString());
+        console.log('📥 Response:', response);
+
+        if (response.error) {
+          clearTimeout(timeout);
+          ws.close();
+          resolve({
+            success: false,
+            error: response.error.message,
+          });
+          return;
+        }
+
+        if (response.authorize && !authorized) {
+          authorized = true;
+          console.log('✅ Authorized, sending transfer...');
+          
+          // Send transfer request
+          ws.send(JSON.stringify({
+            paymentagent_transfer: 1,
+            transfer_to: clientAccount,
+            amount: amountUSD,
+            currency: 'USD',
+            description: 'M-Pesa deposit via ABEPAY',
+          }));
+        }
+
+        if (response.paymentagent_transfer) {
+          clearTimeout(timeout);
+          ws.close();
+          console.log('🎉 Transfer complete!');
+          
+          resolve({
+            success: true,
+            transaction_id: response.paymentagent_transfer.transaction_id,
+          });
+        }
+      });
+
+      ws.on('error', (error) => {
+        clearTimeout(timeout);
+        ws.close();
+        resolve({
+          success: false,
+          error: error.message,
+        });
+      });
+    });
 
   } catch (error: any) {
     console.error('💥 Transfer exception:', error);
     return {
       success: false,
-      error: error.message || 'Unknown error',
+      error: error.message,
     };
   }
 }
