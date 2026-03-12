@@ -8,6 +8,7 @@ import {
   isValidKenyanPhone,
   MPESA_CONFIG 
 } from '@/lib/mpesa-config';
+import { storePendingDeposit } from '@/lib/pending-deposits';
 
 export async function POST(request: NextRequest) {
   try {
@@ -99,14 +100,23 @@ export async function POST(request: NextRequest) {
     const stkData = await stkResponse.json();
 
     if (stkData.ResponseCode === '0') {
-      console.log('✅ STK Push sent with Account Reference:', derivAccount);
+      // Store the pending deposit
+      storePendingDeposit({
+        checkoutRequestID: stkData.CheckoutRequestID,
+        derivAccount: derivAccount,
+        phoneNumber: formattedPhone,
+        kesAmount: numAmount,
+        timestamp: Date.now(),
+      });
+
+      console.log('✅ STK Push sent and pending deposit stored');
+      
       return NextResponse.json({
         success: true,
-        message: 'STK push sent. Check your phone and enter M-Pesa PIN.',
+        message: 'STK push sent',
         checkoutRequestID: stkData.CheckoutRequestID,
-        merchantRequestID: stkData.MerchantRequestID,
-        derivAccount: derivAccount,
       });
+
     } else {
       return NextResponse.json(
         { success: false, error: stkData.errorMessage || 'STK push failed' },
