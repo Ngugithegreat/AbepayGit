@@ -14,7 +14,7 @@ export async function storePendingDeposit(deposit: PendingDeposit) {
     const key = `pending-${deposit.checkoutRequestID}.json`;
     
     await put(key, JSON.stringify(deposit), {
-      access: 'public',
+      access: 'private',
       addRandomSuffix: false,
     });
     
