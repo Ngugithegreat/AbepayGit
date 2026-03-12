@@ -62,7 +62,7 @@ export default function DepositPage() {
             body: JSON.stringify({
                 phone: phone,
                 amount: kesAmountNumber,
-                loginid: selectedAccount.loginid
+                derivAccount: selectedAccount.loginid
             })
         });
 
