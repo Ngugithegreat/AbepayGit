@@ -1,4 +1,4 @@
-import { put, del, list } from '@vercel/blob';
+import { Redis } from '@upstash/redis';
 
 interface PendingDeposit {
   checkoutRequestID: string;
@@ -8,28 +8,33 @@ interface PendingDeposit {
   timestamp: number;
 }
 
-// Get blob token from environment
-function getBlobToken() {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) {
-    throw new Error('BLOB_READ_WRITE_TOKEN not configured');
+// Initialize Redis client
+function getRedisClient() {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) {
+    throw new Error('Redis credentials not configured');
   }
-  return token;
+
+  return new Redis({
+    url,
+    token,
+  });
 }
 
-// Store pending deposit
+// Store pending deposit (expires after 1 hour)
 export async function storePendingDeposit(deposit: PendingDeposit) {
   try {
-    const key = `pending-${deposit.checkoutRequestID}.json`;
+    const redis = getRedisClient();
+    const key = `pending:${deposit.checkoutRequestID}`;
     
-    const blob = await put(key, JSON.stringify(deposit), {
-      access: 'private',
-      addRandomSuffix: false,
-      token: getBlobToken(), // ADD THIS!
+    // Store with 1 hour expiration
+    await redis.set(key, JSON.stringify(deposit), {
+      ex: 3600, // Expire after 1 hour
     });
     
-    console.log('📝 Stored pending deposit in Blob:', blob.url);
-    return blob;
+    console.log('📝 Stored pending deposit in Redis:', deposit.checkoutRequestID);
   } catch (error) {
     console.error('Failed to store pending deposit:', error);
     throw error;
@@ -41,26 +46,19 @@ export async function getPendingDeposit(
   checkoutRequestID: string
 ): Promise<PendingDeposit | null> {
   try {
-    const key = `pending-${checkoutRequestID}.json`;
+    const redis = getRedisClient();
+    const key = `pending:${checkoutRequestID}`;
     
-    // List blobs to find the file
-    const { blobs } = await list({
-      prefix: key,
-      token: getBlobToken(), // ADD THIS!
-    });
-
-    if (blobs.length === 0) {
+    const data = await redis.get(key);
+    
+    if (!data) {
       console.log('❌ No pending deposit found for:', checkoutRequestID);
       return null;
     }
 
-    // Get the blob content
-    const response = await fetch(blobs[0].url);
-    const text = await response.text();
-    const deposit = JSON.parse(text) as PendingDeposit;
-    
+    const deposit = typeof data === 'string' ? JSON.parse(data) : data;
     console.log('✅ Found pending deposit:', deposit);
-    return deposit;
+    return deposit as PendingDeposit;
   } catch (error) {
     console.error('Failed to get pending deposit:', error);
     return null;
@@ -70,21 +68,12 @@ export async function getPendingDeposit(
 // Remove pending deposit
 export async function removePendingDeposit(checkoutRequestID: string) {
   try {
-    const key = `pending-${checkoutRequestID}.json`;
+    const redis = getRedisClient();
+    const key = `pending:${checkoutRequestID}`;
     
-    // Find the blob URL first
-    const { blobs } = await list({
-      prefix: key,
-      token: getBlobToken(), // ADD THIS!
-    });
-
-    if (blobs.length > 0) {
-      await del(blobs[0].url, {
-        token: getBlobToken(), // ADD THIS!
-      });
-      
-      console.log('🗑️ Removed pending deposit:', checkoutRequestID);
-    }
+    await redis.del(key);
+    
+    console.log('🗑️ Removed pending deposit:', checkoutRequestID);
   } catch (error) {
     console.error('Failed to remove pending deposit:', error);
   }
@@ -93,21 +82,17 @@ export async function removePendingDeposit(checkoutRequestID: string) {
 // Get all pending deposits (for admin)
 export async function getAllPendingDeposits(): Promise<PendingDeposit[]> {
   try {
-    const { blobs } = await list({
-      prefix: 'pending-',
-      token: getBlobToken(), // ADD THIS!
-    });
+    const redis = getRedisClient();
     
+    // Get all keys matching pattern
+    const keys = await redis.keys('pending:*');
     const deposits: PendingDeposit[] = [];
 
-    for (const blob of blobs) {
-      try {
-        const response = await fetch(blob.url);
-        const text = await response.text();
-        const deposit = JSON.parse(text) as PendingDeposit;
-        deposits.push(deposit);
-      } catch (error) {
-        console.error('Failed to parse deposit:', error);
+    for (const key of keys) {
+      const data = await redis.get(key);
+      if (data) {
+        const deposit = typeof data === 'string' ? JSON.parse(data) : data;
+        deposits.push(deposit as PendingDeposit);
       }
     }
 
