@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPendingDeposit, removePendingDeposit } from '@/lib/pending-deposits';
-import { transferToClient, calculateUSD, EXCHANGE_RATES } from '@/lib/deriv-api';
+import { transferToClient } from '@/lib/deriv-api';
 
 
 export async function POST(request: NextRequest) {
@@ -17,70 +17,89 @@ export async function POST(request: NextRequest) {
     const { ResultCode, ResultDesc, CheckoutRequestID, CallbackMetadata } = stkCallback;
 
     if (ResultCode === 0) {
-      // Payment successful
-      console.log('✅ Payment successful!');
+      console.log('✅ M-Pesa payment successful!');
 
-      // Get the pending deposit info
-      const pendingDeposit = getPendingDeposit(CheckoutRequestID);
+      // Get pending deposit from KV storage
+      const pendingDeposit = await getPendingDeposit(CheckoutRequestID);
 
       if (!pendingDeposit) {
         console.error('❌ No pending deposit found for:', CheckoutRequestID);
-        // Acknowledge receipt to M-Pesa even if we can't find it
-        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Received' }, { status: 200 });
+        
+        // Still return 200 to M-Pesa to avoid retries
+        return NextResponse.json(
+          { ResultCode: 0, ResultDesc: 'Received' },
+          { status: 200 }
+        );
       }
 
       console.log('📋 Found pending deposit:', pendingDeposit);
 
-      // Extract payment details from metadata
+      // Extract payment details
       const metadata = CallbackMetadata?.Item || [];
       const paymentDetails: any = {};
+      
       metadata.forEach((item: any) => {
         paymentDetails[item.Name] = item.Value;
       });
+
+      const kesAmount = paymentDetails.Amount || 0;
       const mpesaReceipt = paymentDetails.MpesaReceiptNumber || '';
 
-      // Use KES amount from our stored record for security, not from callback
-      const kesAmount = pendingDeposit.kesAmount;
-      const usdAmount = calculateUSD(kesAmount, EXCHANGE_RATES.DEPOSIT);
+      // Calculate USD
+      const depositRate = 130;
+      const usdAmount = parseFloat((kesAmount / depositRate).toFixed(2));
 
       console.log(`💵 ${kesAmount} KES = $${usdAmount} USD`);
-      console.log(`📝 Crediting to account: ${pendingDeposit.derivAccount}`);
+      console.log(`📝 Crediting to: ${pendingDeposit.derivAccount}`);
 
-      // Transfer USD to Deriv account
+      // Transfer to Deriv account
       const transferResult = await transferToClient(
-        pendingDeposit.derivAccount, 
+        pendingDeposit.derivAccount,
         usdAmount
       );
-      
-      if(transferResult.success) {
-        console.log('🎉 Deriv transfer completed!', { 
-            mpesaReceipt: mpesaReceipt,
-            derivTransactionId: transferResult.transaction_id 
-        });
-        // TODO: Store final transaction in a permanent database
+
+      if (transferResult.success) {
+        console.log('🎉 Transfer successful!', transferResult);
+        
+        // Remove from pending
+        await removePendingDeposit(CheckoutRequestID);
+        
+        // TODO: Store completed transaction in database
+        
       } else {
-        console.error('❌ Deriv transfer failed:', transferResult.error);
-        // TODO: Handle failed transfer (e.g., alert admin, schedule retry)
+        console.error('❌ Transfer failed:', transferResult.error);
+        
+        // Keep in pending for manual processing
+        // Admin can retry later
       }
 
+      // Always return 200 to M-Pesa
+      return NextResponse.json(
+        { ResultCode: 0, ResultDesc: 'Success' },
+        { status: 200 }
+      );
 
-      // Remove from pending
-      removePendingDeposit(CheckoutRequestID);
-
-      console.log('🎉 Deposit processed successfully!');
-
-      return NextResponse.json({ ResultCode: 0, ResultDesc: 'Success' }, { status: 200 });
     } else {
       console.log('❌ Payment failed:', ResultDesc);
-      // Remove from pending list on failure
+      
+      // Remove from pending
       if (CheckoutRequestID) {
-        removePendingDeposit(CheckoutRequestID);
+        await removePendingDeposit(CheckoutRequestID);
       }
-      return NextResponse.json({ ResultCode: 0, ResultDesc: 'Acknowledged' }, { status: 200 });
+      
+      return NextResponse.json(
+        { ResultCode: 0, ResultDesc: 'Acknowledged' },
+        { status: 200 }
+      );
     }
 
   } catch (error: any) {
     console.error('💥 Callback error:', error);
-    return NextResponse.json({ ResultCode: 0, ResultDesc: 'Received' }, { status: 200 });
+    
+    // Always return 200 to avoid M-Pesa retries
+    return NextResponse.json(
+      { ResultCode: 0, ResultDesc: 'Received' },
+      { status: 200 }
+    );
   }
 }

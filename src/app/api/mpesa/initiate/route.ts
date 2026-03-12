@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     if (stkData.ResponseCode === '0') {
       // Store the pending deposit
-      storePendingDeposit({
+      await storePendingDeposit({
         checkoutRequestID: stkData.CheckoutRequestID,
         derivAccount: derivAccount,
         phoneNumber: formattedPhone,
