@@ -34,37 +34,19 @@ export const MPESA_CONFIG = {
 
 // Get current environment config
 export function getMpesaConfig() {
-  // FORCE PRODUCTION if environment variable is set
   const environment = process.env.MPESA_ENVIRONMENT === 'sandbox' ? 'SANDBOX' : 'PRODUCTION';
-  
-  console.log('🔧 Using environment:', environment);
-  
   const config = MPESA_CONFIG[environment];
   
-  console.log('🔧 M-Pesa Config Status:', {
-    environment: environment,
-    shortcode: config.SHORTCODE,
-    authUrl: config.AUTH_URL,
-    hasConsumerKey: !!config.CONSUMER_KEY && config.CONSUMER_KEY.length > 0,
-    hasConsumerSecret: !!config.CONSUMER_SECRET && config.CONSUMER_SECRET.length > 0,
-    hasPasskey: !!config.PASSKEY && config.PASSKEY.length > 0,
-    consumerKeyLength: config.CONSUMER_KEY?.length,
-    consumerSecretLength: config.CONSUMER_SECRET?.length,
-    passkeyLength: config.PASSKEY?.length,
-  });
+  console.log('🔧 Using M-Pesa environment:', environment);
   
   // Validate that all required credentials are present
-  if (!config.CONSUMER_KEY || config.CONSUMER_KEY.length === 0) {
-    throw new Error('MPESA_CONSUMER_KEY is not set in environment variables!');
-  }
-  if (!config.CONSUMER_SECRET || config.CONSUMER_SECRET.length === 0) {
-    throw new Error('MPESA_CONSUMER_SECRET is not set in environment variables!');
-  }
-  if (!config.PASSKEY || config.PASSKEY.length === 0) {
-    throw new Error('MPESA_PASSKEY is not set in environment variables!');
+  if (!config.CONSUMER_KEY || !config.CONSUMER_SECRET || !config.PASSKEY) {
+    const error = 'M-Pesa credentials (MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_PASSKEY) are not fully configured in environment variables.';
+    console.error(`❌ ${error}`);
+    return { config: null, error };
   }
   
-  return config;
+  return { config, error: null };
 }
 
 // Generate M-Pesa password (required for STK Push)

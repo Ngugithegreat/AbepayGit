@@ -48,7 +48,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const config = getMpesaConfig();
+    const { config, error: configError } = getMpesaConfig();
+    if (configError) {
+      return NextResponse.json({ success: false, error: configError }, { status: 500 });
+    }
 
     // Get access token
     const auth = Buffer.from(`${config.CONSUMER_KEY}:${config.CONSUMER_SECRET}`).toString('base64');
@@ -61,6 +64,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (!authResponse.ok) {
+       const errorText = await authResponse.text();
+       console.error("M-Pesa Auth API Error:", errorText);
       throw new Error('Failed to authenticate with M-Pesa');
     }
 
@@ -82,7 +87,7 @@ export async function POST(request: NextRequest) {
       PartyB: config.SHORTCODE,
       PhoneNumber: formattedPhone,
       CallBackURL: MPESA_CONFIG.CALLBACK_URL,
-      AccountReference: derivAccount,  // THIS IS CRITICAL!
+      AccountReference: derivAccount,
       TransactionDesc: `Deposit to ${derivAccount}`,
     };
 

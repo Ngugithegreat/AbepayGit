@@ -3,7 +3,11 @@ import { getMpesaConfig } from '@/lib/mpesa-config';
 
 export async function GET() {
   try {
-    const config = getMpesaConfig();
+    const { config, error: configError } = getMpesaConfig();
+    if (configError) {
+        return NextResponse.json({ error: configError }, { status: 500 });
+    }
+    
     const consumerKey = config.CONSUMER_KEY;
     const consumerSecret = config.CONSUMER_SECRET;
     const authUrl = config.AUTH_URL;

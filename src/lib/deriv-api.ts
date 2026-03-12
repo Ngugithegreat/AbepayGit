@@ -40,7 +40,7 @@ export async function transferToClient(
     }
 
     // Use Deriv's HTTP API (more reliable for serverless)
-    const response = await fetch('https://api.deriv.com/v1/paymentagent_transfer', {
+    const response = await fetch('https://api.deriv.com/v1/payment_agent/transfer', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
