@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { put, get, del, list } from '@vercel/blob';
 
 interface PendingDeposit {
   checkoutRequestID: string;
@@ -8,17 +8,20 @@ interface PendingDeposit {
   timestamp: number;
 }
 
-// Store pending deposit (expires after 1 hour)
+// Store pending deposit
 export async function storePendingDeposit(deposit: PendingDeposit) {
   try {
-    await kv.set(
-      `pending:${deposit.checkoutRequestID}`,
-      JSON.stringify(deposit),
-      { ex: 3600 } // Expire after 1 hour
-    );
-    console.log('📝 Stored pending deposit in KV:', deposit.checkoutRequestID);
+    const key = `pending-${deposit.checkoutRequestID}.json`;
+    
+    await put(key, JSON.stringify(deposit), {
+      access: 'public',
+      addRandomSuffix: false,
+    });
+    
+    console.log('📝 Stored pending deposit in Blob:', deposit.checkoutRequestID);
   } catch (error) {
     console.error('Failed to store pending deposit:', error);
+    throw error;
   }
 }
 
@@ -27,16 +30,20 @@ export async function getPendingDeposit(
   checkoutRequestID: string
 ): Promise<PendingDeposit | null> {
   try {
-    const data = await kv.get(`pending:${checkoutRequestID}`);
+    const key = `pending-${checkoutRequestID}.json`;
     
-    if (!data) {
+    const blob = await get(key);
+    
+    if (!blob) {
       console.log('❌ No pending deposit found for:', checkoutRequestID);
       return null;
     }
 
-    const deposit = typeof data === 'string' ? JSON.parse(data) : data;
+    const text = await blob.text();
+    const deposit = JSON.parse(text) as PendingDeposit;
+    
     console.log('✅ Found pending deposit:', deposit);
-    return deposit as PendingDeposit;
+    return deposit;
   } catch (error) {
     console.error('Failed to get pending deposit:', error);
     return null;
@@ -46,7 +53,10 @@ export async function getPendingDeposit(
 // Remove pending deposit
 export async function removePendingDeposit(checkoutRequestID: string) {
   try {
-    await kv.del(`pending:${checkoutRequestID}`);
+    const key = `pending-${checkoutRequestID}.json`;
+    
+    await del(key);
+    
     console.log('🗑️ Removed pending deposit:', checkoutRequestID);
   } catch (error) {
     console.error('Failed to remove pending deposit:', error);
@@ -56,14 +66,17 @@ export async function removePendingDeposit(checkoutRequestID: string) {
 // Get all pending deposits (for admin)
 export async function getAllPendingDeposits(): Promise<PendingDeposit[]> {
   try {
-    const keys = await kv.keys('pending:*');
+    const { blobs } = await list({ prefix: 'pending-' });
     const deposits: PendingDeposit[] = [];
 
-    for (const key of keys) {
-      const data = await kv.get(key);
-      if (data) {
-        const deposit = typeof data === 'string' ? JSON.parse(data) : data;
-        deposits.push(deposit as PendingDeposit);
+    for (const blob of blobs) {
+      try {
+        const response = await fetch(blob.url);
+        const text = await response.text();
+        const deposit = JSON.parse(text) as PendingDeposit;
+        deposits.push(deposit);
+      } catch (error) {
+        console.error('Failed to parse deposit:', error);
       }
     }
 
