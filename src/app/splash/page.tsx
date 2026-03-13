@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -11,17 +10,8 @@ export default function SplashScreen() {
     const checkAuth = async () => {
       await new Promise(resolve => setTimeout(resolve, 2500));
       
-      // Check if user has completed setup (has password)
-      const hasPassword = localStorage.getItem('user_has_password');
-      const userName = localStorage.getItem('user_name');
-      
-      if (hasPassword && userName) {
-        // Returning user
-        router.push('/welcome-back');
-      } else {
-        // New user or incomplete setup
-        router.push('/login');
-      }
+      // Always go to login page. It will handle the logic.
+      router.push('/login');
     };
 
     checkAuth();

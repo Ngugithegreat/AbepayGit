@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -65,8 +64,8 @@ export default function CreatePasswordPage() {
 
       console.log('✅ Account setup complete!');
 
-      // Go to password login
-      router.push('/password-login');
+      // Go to main login page
+      router.push('/login');
     } catch (error) {
       console.error('Setup error:', error);
       setError('Failed to complete setup');
