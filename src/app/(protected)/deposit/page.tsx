@@ -3,23 +3,26 @@
 import { useAuth } from '@/context/auth-context';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowDownLeft, Info } from 'lucide-react';
+import { ArrowDownLeft, Info, Check } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function DepositPage() {
   const { selectedAccount } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [kesAmount, setKesAmount] = useState('');
   const [usdAmount, setUsdAmount] = useState('0.00');
   const [phone, setPhone] = useState('');
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [exchangeRate, setExchangeRate] = useState(130); // Default rate
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
 
   const MIN_USD = 1.00;
   const MAX_USD = 2000.00;
-  const MIN_KES = MIN_USD * exchangeRate;
-  const MAX_KES = MAX_USD * exchangeRate;
+  const minKes = MIN_USD * exchangeRate;
+  const maxKes = MAX_USD * exchangeRate;
 
   useEffect(() => {
     const loadRate = async () => {
@@ -48,10 +51,10 @@ export default function DepositPage() {
     setUsdAmount(usd.toFixed(2));
 
     // Validate amount
-    if (kes > 0 && kes < MIN_KES) {
-      setError(`Minimum deposit is ${MIN_KES} KES ($${MIN_USD.toFixed(2)} USD)`);
-    } else if (kes > MAX_KES) {
-      setError(`Maximum deposit is ${MAX_KES.toLocaleString()} KES ($${MAX_USD.toLocaleString()} USD)`);
+    if (kes > 0 && kes < minKes) {
+      setError(`Minimum deposit is ${minKes} KES ($${MIN_USD.toFixed(2)} USD)`);
+    } else if (kes > maxKes) {
+      setError(`Maximum deposit is ${maxKes.toLocaleString()} KES ($${MAX_USD.toLocaleString()} USD)`);
     }
   };
 
@@ -67,18 +70,17 @@ export default function DepositPage() {
     }
 
     const kesValue = parseFloat(kesAmount);
-    if (kesValue < MIN_KES) {
-      setError(`Minimum deposit is ${MIN_KES} KES ($${MIN_USD.toFixed(2)} USD)`);
+    if (kesValue < minKes) {
+      setError(`Minimum deposit is ${minKes} KES ($${MIN_USD.toFixed(2)} USD)`);
       return;
     }
 
-    if (kesValue > MAX_KES) {
-      setError(`Maximum deposit is ${MAX_KES.toLocaleString()} KES ($${MAX_USD.toLocaleString()} USD)`);
+    if (kesValue > maxKes) {
+      setError(`Maximum deposit is ${maxKes.toLocaleString()} KES ($${MAX_USD.toLocaleString()} USD)`);
       return;
     }
     
     setIsLoading(true);
-    setMessage('');
     setError('');
 
     try {
@@ -95,10 +97,8 @@ export default function DepositPage() {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            toast({
-                title: "Action Required",
-                description: `✅ STK push sent! Check your phone (${phone}) and enter your M-Pesa PIN.`,
-            });
+            setModalMessage(`STK push sent! Check your phone (${phone}) and enter your M-Pesa PIN to complete the transaction.`);
+            setShowModal(true);
             setKesAmount('');
             setUsdAmount('0.00');
             setPhone('');
@@ -146,7 +146,7 @@ export default function DepositPage() {
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <span className="text-gray-400 sm:text-sm">KES</span>
               </div>
-              <input type="number" id="depositAmount" value={kesAmount} onChange={handleKesChange} required min={MIN_KES} max={MAX_KES} placeholder={`Minimum ${MIN_KES}`} className="pl-12 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
+              <input type="number" id="depositAmount" value={kesAmount} onChange={handleKesChange} required min={minKes} max={maxKes} placeholder={`Minimum ${minKes}`} className="pl-12 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
             </div>
             
             {parseFloat(usdAmount) > 0 && !error && (
@@ -177,9 +177,9 @@ export default function DepositPage() {
                 <Info className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-green-200 space-y-1">
                 <p className="font-semibold">Deposit Rules</p>
-                <p>• Minimum: {MIN_KES.toLocaleString()} KES (${MIN_USD.toFixed(2)} USD)</p>
-                <p>• Maximum: {MAX_KES.toLocaleString()} KES (${MAX_USD.toLocaleString()} USD)</p>
-                <p>• Rate: {exchangeRate} KES = $1 USD</p>
+                <p>• Minimum: ${minKes.toLocaleString()} KES ($${MIN_USD.toFixed(2)} USD)</p>
+                <p>• Maximum: ${maxKes.toLocaleString()} KES ($${MAX_USD.toLocaleString()} USD)</p>
+                <p>• Rate: ${exchangeRate} KES = $1 USD</p>
                 </div>
             </div>
         </div>
@@ -206,6 +206,33 @@ export default function DepositPage() {
         </div>
       </div>
     </div>
+    {showModal && (
+      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-6 animate-fade-in">
+        <div className="glass-effect rounded-2xl p-8 max-w-sm w-full space-y-6 animate-scale-in custom-shadow">
+          <div className="text-center">
+            <div className="w-20 h-20 mx-auto rounded-full bg-green-900/50 border-2 border-green-500 flex items-center justify-center mb-4">
+              <Check className="w-10 h-10 text-green-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">
+              Action Required
+            </h3>
+            <p className="text-gray-300">
+              {modalMessage}
+            </p>
+          </div>
+          
+          <button
+            onClick={() => {
+              setShowModal(false);
+              router.push('/dashboard');
+            }}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200"
+          >
+            Okay
+          </button>
+        </div>
+      </div>
+    )}
   </div>
   );
 }
