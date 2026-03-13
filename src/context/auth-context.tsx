@@ -46,15 +46,13 @@ class DerivAPI {
         try {
           const data = JSON.parse(msg.data);
           
-          // Check for balance update
-          if (data.balance) { // This can be a response to a request or a subscription update
+          if (data.balance) { 
             console.log("💰 Balance update received:", data.balance);
             if (this.onBalanceUpdate) {
               this.onBalanceUpdate(parseFloat(data.balance.balance));
             }
           }
           
-          // Regular request/response handling
           if (data.req_id && this.message_callbacks.has(data.req_id)) {
             const callback = this.message_callbacks.get(data.req_id);
             if (data.error) {
@@ -136,6 +134,7 @@ interface AuthContextType {
   selectedAccount: DerivAccount | null;
   isLoading: boolean;
   logout: () => void;
+  login: (token: string) => Promise<void>;
   updateBalance: (newBalance: number) => void;
   refreshBalance: () => Promise<void>;
 }
@@ -153,32 +152,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasInitialized = useRef(false);
 
   const updateBalance = useCallback((newBalance: number) => {
-    if (selectedAccount) {
-      setSelectedAccount(prev => prev ? { ...prev, balance: newBalance } : null);
-      
-      // also update the balance in the main user object to persist it
-      setUser(prevUser => {
-        if (!prevUser) return null;
-        const newAccountList = prevUser.account_list.map(acc => 
-            acc.loginid === selectedAccount.loginid ? { ...acc, balance: newBalance } : acc
-        );
-        const updatedUser = { ...prevUser, account_list: newAccountList };
-        
-        if (prevUser.loginid === selectedAccount.loginid) {
-            updatedUser.balance = newBalance;
-        }
-        
-        localStorage.setItem('deriv_user', JSON.stringify(updatedUser));
-        return updatedUser;
-      });
-    }
+    setSelectedAccount(prev => prev ? { ...prev, balance: newBalance } : null);
+    setUser(prevUser => {
+      if (!prevUser || !selectedAccount) return prevUser;
+      const newAccountList = prevUser.account_list.map(acc => 
+          acc.loginid === selectedAccount.loginid ? { ...acc, balance: newBalance } : acc
+      );
+      const updatedUser = { ...prevUser, account_list: newAccountList, balance: newBalance };
+      localStorage.setItem('deriv_user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
   }, [selectedAccount]);
 
   const refreshBalance = useCallback(async () => {
-    if (!api || !selectedAccount) {
-      console.log("Cannot refresh: No API or selected account");
-      return;
-    }
+    if (!api || !selectedAccount) return;
     console.log("🔄 Requesting balance refresh...");
     try {
       await api.sendRequest({ balance: 1 });
@@ -195,19 +182,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     
-    console.log("🔧 Init API");
     const derivApi = new DerivAPI({ app_id: Number(appId) });
-    
-    derivApi.onBalanceUpdate = (newBalance: number) => {
-      console.log("💰 Balance updated to:", newBalance);
-      updateBalance(newBalance);
-    };
-    
+    derivApi.onBalanceUpdate = updateBalance;
     setApi(derivApi);
 
-    return () => {
-      derivApi.disconnect();
-    };
+    return () => derivApi.disconnect();
   }, [updateBalance]);
 
   const logout = useCallback(() => {
@@ -216,95 +195,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('deriv_token');
     setUser(null);
     setSelectedAccount(null);
+    api?.disconnect();
     globalAuthLock = false;
-  }, []);
+  }, [api]);
 
-  const verifyToken = useCallback(async (token: string): Promise<boolean> => {
-    if (!api) {
-      console.error("❌ No API to verify token");
-      return false;
-    }
+  const login = useCallback(async (token: string): Promise<void> => {
+    if (!api) throw new Error("API not ready");
+    if (globalAuthLock) throw new Error("Authentication already in progress");
     
-    if (globalAuthLock) {
-      console.log("⚠️ Auth blocked by lock");
-      return false;
-    }
     globalAuthLock = true;
-    console.log("🔐 Verifying token");
+    console.log("🔐 Logging in with new token");
 
     try {
       const response = await api.authorize(token);
 
-      console.log('=== DERIV API RESPONSE ===');
-      console.log('Full response:', response);
-      
       if (response.error) {
-        console.error("❌ Auth failed:", response.error.message);
-        logout();
-        return false;
+        throw new Error(response.error.message);
       }
       
       const authData = response.authorize as DerivUser;
       localStorage.setItem('deriv_token', token);
+      localStorage.setItem('deriv_user', JSON.stringify(authData));
 
-      console.log('=== USER DATA ===');
-      console.log('Full user:', authData);
-      console.log('Email:', authData.email);
-      console.log('All accounts:', authData.account_list);
-
-      const authorizedLoginId = authData.loginid;
-      let localSelectedAccount: DerivAccount | null = null;
-      
       const clientAccount = authData.account_list?.find(acc => acc.is_virtual === 0);
-
-      if (clientAccount) {
-          localSelectedAccount = clientAccount;
-          console.log('=== SELECTED CLIENT ACCOUNT ===');
-          console.log('Account ID:', localSelectedAccount.loginid);
-          console.log('Currency:', localSelectedAccount.currency);
-          console.log('Initial Balance:', localSelectedAccount.balance);
-      } else {
-          console.error("❌ No real client accounts were found.");
-          logout();
-          return false;
+      if (!clientAccount) {
+          throw new Error("No real money accounts found.");
       }
 
-      setSelectedAccount(localSelectedAccount);
+      setSelectedAccount(clientAccount);
       setUser(authData);
-      localStorage.setItem('deriv_user', JSON.stringify(authData));
+      
       console.log("✅ Auth success:", authData.email);
 
-      if (localSelectedAccount && localSelectedAccount.loginid !== authorizedLoginId) {
-        console.log(`🔌 Authorized as ${authorizedLoginId}, but need balance for ${localSelectedAccount.loginid}. Switching accounts...`);
-        try {
-          const switchResponse = await api.sendRequest({ account_switch: localSelectedAccount.loginid });
-          if (switchResponse.error) {
-            throw new Error(`Failed to switch to account ${localSelectedAccount.loginid}: ${switchResponse.error.message}`);
-          }
-          console.log(`✅ Switched to account ${localSelectedAccount.loginid} for balance updates.`);
-        } catch (switchError) {
-          console.error("❌ Account switch failed:", switchError);
-          logout();
-          return false;
-        }
+      if (clientAccount.loginid !== authData.loginid) {
+        await api.sendRequest({ account_switch: clientAccount.loginid });
       }
 
-      try {
-        await api.sendRequest({
-          balance: 1,
-          subscribe: 1
-        });
-        console.log(`✅ Subscribed to balance updates for ${localSelectedAccount?.loginid}`);
-      } catch (err) {
-        console.error("Failed to subscribe to balance updates:", err);
-      }
-
-      return true;
+      await api.sendRequest({ balance: 1, subscribe: 1 });
+      console.log(`✅ Subscribed to balance updates for ${clientAccount.loginid}`);
 
     } catch (error: any) {
-      console.error("❌ Auth error:", error.message);
+      console.error("❌ Auth error during login:", error.message);
       logout();
-      return false;
+      throw error; // Re-throw to be caught by the caller
     } finally {
       globalAuthLock = false;
     }
@@ -315,25 +248,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     hasInitialized.current = true;
 
-    const init = async () => {
+    const initAuth = async () => {
       setIsLoading(true);
       const token = localStorage.getItem('deriv_token');
+      const userJSON = localStorage.getItem('deriv_user');
 
-      if (token) {
-        console.log("📦 Token found from previous session, verifying...");
-        const success = await verifyToken(token);
-        if (!success) {
-          console.log("⚠️ Token invalid, logging out.");
+      if (token && userJSON) {
+        console.log("📦 Previous session found, re-authorizing...");
+        try {
+          const storedUser = JSON.parse(userJSON) as DerivUser;
+          setUser(storedUser);
+          const clientAccount = storedUser.account_list?.find(acc => acc.is_virtual === 0);
+          setSelectedAccount(clientAccount || null);
+          await login(token);
+        } catch (error) {
+          console.log("⚠️ Session invalid, logging out.");
           logout();
         }
-      } else {
-        console.log("ℹ️ No session token found. User is likely logged out.");
       }
       setIsLoading(false);
     };
     
-    setTimeout(init, 1500);
-  }, [api, verifyToken, logout]);
+    initAuth();
+  }, [api, login, logout]);
 
   const value: AuthContextType = {
     isLinked: !!user && !isLoading,
@@ -341,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     selectedAccount,
     isLoading,
     logout,
+    login,
     updateBalance,
     refreshBalance,
   };
