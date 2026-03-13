@@ -1,115 +1,142 @@
-
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { Loader2 } from 'lucide-react';
 
-function AuthCallbackContent() {
+export default function AuthCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
-  const [status, setStatus] = useState('processing');
+  const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [error, setError] = useState('');
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
-    let isMounted = true;
-
     const handleCallback = async () => {
+      // Check if already processed in this component instance
+      if (hasProcessed.current) {
+        console.log('⏭️ Callback already processed, skipping...');
+        return;
+      }
+
+      // Check if recently processed in this session
+      const lastProcessed = sessionStorage.getItem('auth_processed_at');
+      if (lastProcessed) {
+        const timeSince = Date.now() - parseInt(lastProcessed);
+        if (timeSince < 30000) { // 30 seconds
+          console.log('⏭️ Recently processed, redirecting to dashboard...');
+          router.push('/dashboard');
+          return;
+        }
+      }
+
       const token1 = searchParams.get('token1');
       const accounts = searchParams.get('acct1');
 
       if (!token1 || !accounts) {
-        console.error('❌ Missing parameters');
-        if (isMounted) {
-          setError('Authentication parameters are missing.');
-          setStatus('error');
-          setTimeout(() => router.push('/login'), 3000);
-        }
+        console.error('❌ Missing OAuth parameters');
+        setError('Authentication parameters are missing.');
+        setStatus('error');
+        setTimeout(() => router.push('/login'), 3000);
         return;
       }
 
+      // Mark as processed
+      hasProcessed.current = true;
+      sessionStorage.setItem('auth_processed_at', Date.now().toString());
+
       try {
-        if (isMounted) setStatus('processing');
+        console.log('🔄 Processing OAuth callback (ONE TIME)...');
         
         // Step 1: Login
         await login(token1, accounts);
 
-        // Step 2: Store token for backend usage
-        await fetch('/api/user/store-oauth-token', {
+        // Step 2: Store OAuth token
+        const response = await fetch('/api/user/store-oauth-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: token1, accounts }),
+          body: JSON.stringify({
+            token: token1,
+            accounts: accounts,
+          }),
         });
 
-        if (isMounted) {
+        const data = await response.json();
+
+        if (data.success) {
+          console.log('✅ Authentication complete!');
           setStatus('success');
-          // Wait a moment then redirect
+          
+          // Wait then redirect
           setTimeout(() => {
             router.push('/dashboard');
           }, 1000);
+        } else {
+          throw new Error(data.error || 'Token storage failed');
         }
       } catch (error: any) {
         console.error('❌ Auth error:', error);
-        if (isMounted) {
-          setError(error.message || 'An unknown error occurred.');
-          setStatus('error');
-          setTimeout(() => router.push('/login'), 3000);
-        }
+        setError(error.message || 'An unknown error occurred.');
+        setStatus('error');
+        
+        // Clear the processed flag on error
+        hasProcessed.current = false;
+        sessionStorage.removeItem('auth_processed_at');
+        
+        setTimeout(() => router.push('/login'), 3000);
       }
     };
 
     handleCallback();
-
-    return () => {
-      isMounted = false;
-    };
   }, [searchParams, login, router]);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-6">
-      <div className="text-center space-y-4 glass-effect rounded-xl p-8 custom-shadow">
-        {status === 'processing' && (
-          <>
-            <Loader2 className="w-16 h-16 text-blue-500 animate-spin mx-auto" />
-            <p className="text-white text-lg">Setting up your account...</p>
-          </>
-        )}
-        {status === 'success' && (
-          <>
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-3xl text-white">✓</span>
+  if (status === 'error') {
+    return (
+       <div className="min-h-screen bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center p-6">
+        <div className="text-center space-y-6">
+            <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto shadow-xl">
+              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </div>
-            <p className="text-white text-lg">Success! Redirecting...</p>
-          </>
-        )}
-        {status === 'error' && (
-          <>
-            <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-3xl text-white">✗</span>
+            <div className="space-y-2">
+              <p className="text-white text-xl font-semibold">Oops! Something went wrong</p>
+              <p className="text-red-200">{error}</p>
+              <p className="text-white/80 text-sm">Redirecting back to login...</p>
             </div>
-            <p className="text-white text-lg">Authentication Failed</p>
-            <p className="text-red-400 text-sm">{error}</p>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-
-export default function AuthCallbackPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex h-screen w-full items-center justify-center bg-slate-900">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-xl text-slate-300">Loading Authentication...</p>
         </div>
       </div>
-    }>
-      <AuthCallbackContent />
-    </Suspense>
+    );
+  }
+  
+  if (status === 'success') {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center p-6">
+            <div className="text-center space-y-6">
+                <div className="w-20 h-20 bg-white/20 backdrop-blur-lg rounded-full flex items-center justify-center mx-auto shadow-xl">
+                  <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-white text-xl font-semibold">Success!</p>
+                  <p className="text-white/80 text-sm">Redirecting to your dashboard...</p>
+                </div>
+            </div>
+        </div>
+      );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-blue-700 flex items-center justify-center p-6">
+      <div className="text-center space-y-6">
+        <div className="w-20 h-20 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
+        <div className="space-y-2">
+          <p className="text-white text-xl font-semibold">Setting up your account...</p>
+          <p className="text-white/80 text-sm">This will only take a moment</p>
+        </div>
+      </div>
+    </div>
   );
 }

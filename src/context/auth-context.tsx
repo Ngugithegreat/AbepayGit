@@ -94,6 +94,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('deriv_loginid');
     localStorage.removeItem('user_info');
     
+    // Clear session storage too
+    sessionStorage.removeItem('auth_processed_at');
+    
     setUser(null);
   };
 

@@ -11,17 +11,18 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { isLinked, isLoading, user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [authUrl, setAuthUrl] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Redirect if already logged in
+  // If already logged in, go to dashboard
   useEffect(() => {
-    if (!isLoading && isLinked) {
-      router.replace('/dashboard');
+    if (!isLoading && user) {
+      console.log('✅ Already logged in, redirecting to dashboard...');
+      router.push('/dashboard');
     }
-  }, [isLoading, isLinked, router]);
+  }, [user, isLoading, router]);
 
   // Handle auth errors from callback
   useEffect(() => {
@@ -67,13 +68,10 @@ function LoginContent() {
     }
   };
 
-  if (isLoading || (isLinked && !user)) {
+  if (isLoading) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 p-4 text-center bg-slate-900">
-        <div className="flex items-center gap-2 text-slate-300">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="text-lg">Loading your session...</span>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
