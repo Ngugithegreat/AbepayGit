@@ -1,26 +1,47 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff, Loader2, RefreshCw } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, selectedAccount, isLoading, refreshBalance } = useAuth();
+  const { user, selectedAccount, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
+  
   const [showBalance, setShowBalance] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const [balance, setBalance] = useState<number | null>(null);
+  const [isBalanceLoading, setIsBalanceLoading] = useState(true);
+
   const [stats, setStats] = useState({ totalDeposits: 0, transactionCount: 0 });
 
-  const balance = selectedAccount?.balance;
+  const fetchBalance = useCallback(async () => {
+    if (!selectedAccount?.loginid) {
+      return;
+    }
+    
+    setIsBalanceLoading(true);
+    try {
+      const response = await fetch(`/api/deriv/balance?account=${selectedAccount.loginid}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setBalance(data.balance);
+      } else {
+        console.error('Failed to fetch balance:', data.error);
+      }
+    } catch (error) {
+      console.error('Failed to fetch balance:', error);
+    } finally {
+      setIsBalanceLoading(false);
+    }
+  }, [selectedAccount?.loginid]);
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await refreshBalance();
-    // A small delay to give a feeling of action and allow websocket to respond
-    setTimeout(() => setIsRefreshing(false), 500);
+    await fetchBalance();
   };
 
   useEffect(() => {
@@ -33,7 +54,6 @@ export default function DashboardPage() {
 
           if (data.success) {
             setTransactions(data.transactions);
-            // Calculate stats
             const totalDeposits = data.transactions
               .filter((tx: any) => tx.type === 'deposit' && tx.status === 'completed')
               .reduce((sum: number, tx: any) => sum + tx.usdAmount, 0);
@@ -50,19 +70,17 @@ export default function DashboardPage() {
         }
       };
       
-      fetchTransactions(); // Fetch transactions on load
-
-      // Auto-refresh balance every 30 seconds
-      const interval = setInterval(() => {
-        refreshBalance();
-      }, 30000);
-      
-      return () => clearInterval(interval);
-
+      fetchTransactions();
     } else {
         setIsLoadingTransactions(false);
     }
-  }, [selectedAccount, refreshBalance]);
+  }, [selectedAccount]);
+  
+  useEffect(() => {
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 30000);
+    return () => clearInterval(interval);
+  }, [fetchBalance]);
 
   return (
     <div className="slide-in">
@@ -84,11 +102,11 @@ export default function DashboardPage() {
               <div className="flex items-center gap-4">
                 <button
                   onClick={handleRefresh}
-                  disabled={isRefreshing || isLoading}
+                  disabled={isBalanceLoading}
                   className="text-white/80 hover:text-white disabled:opacity-50"
                   title="Refresh balance"
                 >
-                  <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-5 h-5 ${isBalanceLoading ? 'animate-spin' : ''}`} />
                 </button>
                 <button
                   onClick={() => setShowBalance(!showBalance)}
@@ -100,7 +118,7 @@ export default function DashboardPage() {
             </div>
             
             <div className="space-y-1">
-              {(isLoading && !balance) ? (
+              {(isAuthLoading || (isBalanceLoading && balance === null)) ? (
                 <div className="h-12 bg-white/20 rounded-lg animate-pulse" />
               ) : (
                 <h2 className="text-5xl font-black text-white">
