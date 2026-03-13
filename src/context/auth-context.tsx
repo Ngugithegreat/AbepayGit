@@ -141,8 +141,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-let globalAuthLock = false;
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DerivUser | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<DerivAccount | null>(null);
@@ -150,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [api, setApi] = useState<DerivAPI | null>(null);
   
   const hasInitialized = useRef(false);
+  const authLock = useRef(false);
 
   const updateBalance = useCallback((newBalance: number) => {
     setSelectedAccount(prev => prev ? { ...prev, balance: newBalance } : null);
@@ -196,14 +195,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSelectedAccount(null);
     api?.disconnect();
-    globalAuthLock = false;
+    authLock.current = false;
   }, [api]);
 
   const login = useCallback(async (token: string): Promise<void> => {
     if (!api) throw new Error("API not ready");
-    if (globalAuthLock) throw new Error("Authentication already in progress");
+    if (authLock.current) {
+      console.warn("Authentication already in progress. Ignoring concurrent call.");
+      return;
+    }
     
-    globalAuthLock = true;
+    authLock.current = true;
     console.log("🔐 Logging in with new token");
 
     try {
@@ -239,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout();
       throw error; // Re-throw to be caught by the caller
     } finally {
-      globalAuthLock = false;
+      authLock.current = false;
     }
   }, [api, logout]);
 
