@@ -84,8 +84,8 @@ function LoginContent() {
   
   if (isLoading) {
       return (
-          <div className="min-h-screen flex items-center justify-center bg-slate-900">
-              <Loader2 className="w-16 h-16 animate-spin text-blue-500"/>
+          <div className="min-h-screen flex items-center justify-center bg-background">
+              <Loader2 className="w-16 h-16 animate-spin text-primary"/>
           </div>
       );
   }
@@ -96,13 +96,13 @@ function LoginContent() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-slate-900">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md glass-effect rounded-xl p-8 custom-shadow slide-in">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-blue-500">
+          <h2 className="text-3xl font-bold text-primary">
             Abepay
           </h2>
-          <p className="text-gray-400 mt-2">
+          <p className="text-muted-foreground mt-2">
             {hasAccount ? 'Welcome back! Log in to your account.' : 'Instant deposits and withdrawals'}
           </p>
         </div>
@@ -110,17 +110,17 @@ function LoginContent() {
         {hasAccount ? (
           <form onSubmit={handlePasswordLogin} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">Email Address</label>
+              <label htmlFor="email" className="block text-sm font-medium text-muted-foreground mb-1">Email Address</label>
               <input 
                 id="email"
                 type="email" 
                 value={email}
                 disabled
-                className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-gray-500 cursor-not-allowed"
+                className="w-full p-3 bg-input border-border rounded-lg text-muted-foreground cursor-not-allowed"
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium text-muted-foreground mb-1">Password</label>
               <div className="relative">
                 <input 
                   id="password"
@@ -129,12 +129,12 @@ function LoginContent() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                  className="w-full p-3 bg-input border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -144,7 +144,7 @@ function LoginContent() {
               <button 
                 type="submit"
                 disabled={isLoggingIn}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:bg-blue-800"
+                className="w-full py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:opacity-50"
               >
                 {isLoggingIn ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
               </button>
@@ -161,13 +161,13 @@ function LoginContent() {
                     toast({ title: 'Please wait', description: 'Generating login link...' });
                   }
                 }}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center"
+                className="w-full py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition duration-200 flex items-center justify-center"
               >
                 Sign Up with Deriv
               </a>
             </div>
             <div className="text-center">
-              <p className="text-xs text-gray-500">(You will be redirected to Deriv to link your account)</p>
+              <p className="text-xs text-muted-foreground/80">(You will be redirected to Deriv to link your account)</p>
             </div>
           </div>
         )}

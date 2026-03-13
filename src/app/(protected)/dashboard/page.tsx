@@ -89,8 +89,8 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -100,10 +100,10 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Please log in to continue</p>
+          <p className="text-muted-foreground mb-4">Please log in to continue</p>
           <button
             onClick={() => router.push('/login')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg"
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg"
           >
             Go to Login
           </button>
@@ -116,31 +116,31 @@ export default function DashboardPage() {
     <div className="slide-in">
         <div className="flex items-center justify-between mb-6">
             <div>
-                <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-                <p className="text-gray-400">Welcome back, {user?.name || 'User'}</p>
+                <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+                <p className="text-muted-foreground">Welcome back, {user?.name || 'User'}</p>
             </div>
             <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-400">{user?.loginid || 'N/A'}</span>
+                <span className="text-sm text-muted-foreground">{user?.loginid || 'N/A'}</span>
             </div>
         </div>
 
         {/* Balance Card */}
-        <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500 rounded-3xl p-8 shadow-2xl mb-8">
+        <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 rounded-3xl p-8 shadow-2xl mb-8">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-white/80 text-sm font-medium">Deriv Balance</span>
+              <span className="text-primary-foreground/80 text-sm font-medium">Deriv Balance</span>
               <div className="flex items-center gap-4">
                 <button
                   onClick={handleRefresh}
                   disabled={isBalanceLoading}
-                  className="text-white/80 hover:text-white disabled:opacity-50"
+                  className="text-primary-foreground/80 hover:text-primary-foreground disabled:opacity-50"
                   title="Refresh balance"
                 >
                   <RefreshCw className={`w-5 h-5 ${isBalanceLoading ? 'animate-spin' : ''}`} />
                 </button>
                 <button
                   onClick={() => setShowBalance(!showBalance)}
-                  className="text-white/80 hover:text-white"
+                  className="text-primary-foreground/80 hover:text-primary-foreground"
                 >
                   {showBalance ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
                 </button>
@@ -151,7 +151,7 @@ export default function DashboardPage() {
               {(isLoading || (isBalanceLoading && balance === null)) ? (
                 <div className="h-12 bg-white/20 rounded-lg animate-pulse" />
               ) : (
-                <h2 className="text-5xl font-black text-white">
+                <h2 className="text-5xl font-black text-primary-foreground">
                   {showBalance ? `$${(balance || 0).toFixed(2)}` : '••••••'}
                 </h2>
               )}
@@ -163,9 +163,9 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
           <button
             onClick={() => router.push('/deposit')}
-            className="h-24 bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4"
+            className="h-24 bg-gradient-to-br from-success to-success/90 hover:from-success/90 hover:to-success/80 rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4"
           >
-            <div className="flex flex-col items-center justify-center gap-2 text-white">
+            <div className="flex flex-col items-center justify-center gap-2 text-success-foreground">
               <ArrowDownLeft className="w-8 h-8" strokeWidth={2.5} />
               <span className="font-bold text-lg">Deposit</span>
             </div>
@@ -173,9 +173,9 @@ export default function DashboardPage() {
 
           <button
             onClick={() => router.push('/withdraw')}
-            className="h-24 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4"
+            className="h-24 bg-gradient-to-br from-warning to-warning/90 hover:from-warning/90 hover:to-warning/80 rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4"
           >
-            <div className="flex flex-col items-center justify-center gap-2 text-white">
+            <div className="flex flex-col items-center justify-center gap-2 text-warning-foreground">
               <ArrowUpRight className="w-8 h-8" strokeWidth={2.5} />
               <span className="font-bold text-lg">Withdraw</span>
             </div>
@@ -185,24 +185,24 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-6">
                 <div className="glass-effect rounded-xl p-6 custom-shadow">
-                    <h3 className="font-medium text-white mb-4">Quick Stats</h3>
+                    <h3 className="font-medium text-foreground mb-4">Quick Stats</h3>
                     <div className="space-y-4">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-green-900/50 flex items-center justify-center">
-                                <TrendingUp className="w-6 h-6 text-green-400" />
+                            <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
+                                <TrendingUp className="w-6 h-6 text-success" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Total Deposits</p>
-                                <p className="text-xl font-bold text-white">${stats.totalDeposits.toFixed(2)}</p>
+                                <p className="text-sm text-muted-foreground">Total Deposits</p>
+                                <p className="text-xl font-bold text-foreground">${stats.totalDeposits.toFixed(2)}</p>
                             </div>
                         </div>
                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-purple-900/50 flex items-center justify-center">
-                                <History className="w-6 h-6 text-purple-400" />
+                            <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center">
+                                <History className="w-6 h-6 text-secondary" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-400">Transactions</p>
-                                <p className="text-xl font-bold text-white">{stats.transactionCount}</p>
+                                <p className="text-sm text-muted-foreground">Transactions</p>
+                                <p className="text-xl font-bold text-foreground">{stats.transactionCount}</p>
                             </div>
                         </div>
                     </div>
@@ -210,31 +210,31 @@ export default function DashboardPage() {
             </div>
 
             <div className="lg:col-span-2 glass-effect rounded-xl p-6 custom-shadow">
-                <h3 className="font-medium text-white mb-4">Recent Activity</h3>
+                <h3 className="font-medium text-foreground mb-4">Recent Activity</h3>
                 {isLoadingTransactions ? (
-                    <div className="text-center py-16 text-gray-500">
+                    <div className="text-center py-16 text-muted-foreground">
                         <Loader2 className="w-12 h-12 mx-auto mb-2 opacity-50 animate-spin" />
                         <p>Loading transactions...</p>
                     </div>
                 ) : transactions.length > 0 ? (
                   <div className="space-y-3">
                     {transactions.slice(0, 5).map((tx: any) => (
-                      <div key={tx.id} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                      <div key={tx.id} className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
                         <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tx.type === 'deposit' ? 'bg-green-900/50' : 'bg-purple-900/50'}`}>
-                                {tx.type === 'deposit' ? <ArrowDownLeft className="w-5 h-5 text-green-400"/> : <ArrowUpRight className="w-5 h-5 text-purple-400"/>}
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tx.type === 'deposit' ? 'bg-success/10' : 'bg-secondary/10'}`}>
+                                {tx.type === 'deposit' ? <ArrowDownLeft className="w-5 h-5 text-success"/> : <ArrowUpRight className="w-5 h-5 text-secondary"/>}
                             </div>
                             <div>
-                              <p className="font-semibold text-white">${tx.usdAmount.toFixed(2)}</p>
-                              <p className="text-xs text-gray-400">{tx.kesAmount.toLocaleString()} KES</p>
+                              <p className="font-semibold text-foreground">${tx.usdAmount.toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground">{tx.kesAmount.toLocaleString()} KES</p>
                             </div>
                         </div>
                         <div className="text-right">
                            <div className="flex items-center justify-end gap-2 text-xs">
-                                <div className={`w-2 h-2 rounded-full ${tx.status === 'completed' ? 'bg-green-400' : 'bg-yellow-400'}`}></div>
-                                <p className="text-gray-300 capitalize">{tx.status}</p>
+                                <div className={`w-2 h-2 rounded-full ${tx.status === 'completed' ? 'bg-success' : 'bg-warning'}`}></div>
+                                <p className="text-muted-foreground capitalize">{tx.status}</p>
                            </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground/80 mt-1">
                             {new Date(tx.timestamp).toLocaleDateString()}
                           </p>
                         </div>
@@ -242,7 +242,7 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-16 text-gray-500">
+                  <div className="text-center py-16 text-muted-foreground/80">
                     <History className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p>No transactions yet</p>
                   </div>

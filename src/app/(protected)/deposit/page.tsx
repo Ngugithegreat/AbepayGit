@@ -132,17 +132,17 @@ export default function DepositPage() {
   return (
     <div className="slide-in">
     <div className="mb-6 flex items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg">
-            <ArrowDownLeft className="w-6 h-6 text-white" strokeWidth={2.5} />
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-success to-success/90 flex items-center justify-center shadow-lg">
+            <ArrowDownLeft className="w-6 h-6 text-success-foreground" strokeWidth={2.5} />
         </div>
         <div>
-            <h1 className="text-2xl font-bold text-white">Deposit</h1>
-            <p className="text-gray-400">Add funds via M-Pesa</p>
+            <h1 className="text-2xl font-bold text-foreground">Deposit</h1>
+            <p className="text-muted-foreground">Add funds via M-Pesa</p>
         </div>
     </div>
     {userAccount && (
-      <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 mb-6">
-        <p className="text-sm text-blue-900">
+      <div className="bg-primary/10 rounded-2xl p-4 border border-primary/20 mb-6">
+        <p className="text-sm text-primary">
           Depositing to: <strong>{userAccount}</strong>
         </p>
       </div>
@@ -151,31 +151,31 @@ export default function DepositPage() {
       <div className="glass-effect rounded-xl p-6 custom-shadow">
         <form onSubmit={handleDeposit} className="space-y-6">
           <div>
-            <label htmlFor="depositPhone" className="block text-sm font-medium text-gray-300 mb-1">M-Pesa Phone Number</label>
+            <label htmlFor="depositPhone" className="block text-sm font-medium text-muted-foreground mb-1">M-Pesa Phone Number</label>
             <div className="flex">
-              <span className="inline-flex items-center px-3 bg-slate-700 border border-r-0 border-slate-600 rounded-l-md text-gray-400">
+              <span className="inline-flex items-center px-3 bg-muted border border-r-0 border-border rounded-l-md text-muted-foreground">
                 +254
               </span>
-              <input type="tel" id="depositPhone" value={phone} onChange={(e) => setPhone(e.target.value)} pattern="[0-9]{9}" required placeholder="7XXXXXXXX" className="flex-1 p-3 bg-slate-800 border border-slate-700 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
+              <input type="tel" id="depositPhone" value={phone} onChange={(e) => setPhone(e.target.value)} pattern="[0-9]{9}" required placeholder="7XXXXXXXX" className="flex-1 p-3 bg-input border border-border rounded-r-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground" />
             </div>
           </div>
           <div>
-            <label htmlFor="depositAmount" className="block text-sm font-medium text-gray-300 mb-1">Amount (KES)</label>
+            <label htmlFor="depositAmount" className="block text-sm font-medium text-muted-foreground mb-1">Amount (KES)</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-gray-400 sm:text-sm">KES</span>
+                <span className="text-muted-foreground sm:text-sm">KES</span>
               </div>
-              <input type="number" id="depositAmount" value={kesAmount} onChange={handleKesChange} required min={minKes} max={maxKes} placeholder={`Minimum ${minKes.toLocaleString()}`} className="pl-12 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
+              <input type="number" id="depositAmount" value={kesAmount} onChange={handleKesChange} required min={minKes} max={maxKes} placeholder={`Minimum ${minKes.toLocaleString()}`} className="pl-12 w-full p-3 bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground" />
             </div>
             
             <div className="mt-2 flex items-center justify-between text-sm">
-                <span className="text-gray-400">Min: {minKes.toLocaleString()} KES</span>
-                <span className="text-gray-400">Rate: 1 USD = {exchangeRate} KES</span>
+                <span className="text-muted-foreground">Min: {minKes.toLocaleString()} KES</span>
+                <span className="text-muted-foreground">Rate: 1 USD = {exchangeRate} KES</span>
             </div>
 
             {parseFloat(usdAmount) > 0 && !error && (
-              <div className="mt-3 p-3 bg-green-900/50 rounded-lg border border-green-700">
-                <p className="text-sm text-green-300">
+              <div className="mt-3 p-3 bg-success/10 rounded-lg border border-success/30">
+                <p className="text-sm text-success">
                   You will receive: <strong className="text-xl">${usdAmount} USD</strong>
                 </p>
               </div>
@@ -183,13 +183,13 @@ export default function DepositPage() {
           </div>
 
           {error && (
-            <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-300 text-sm">
+            <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-sm">
                 {error}
             </div>
           )}
 
           <div>
-            <button type="submit" disabled={isLoading || !!error || !kesAmount || !userAccount} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:bg-blue-800 disabled:cursor-not-allowed">
+            <button type="submit" disabled={isLoading || !!error || !kesAmount || !userAccount} className="w-full py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
               {isLoading ? <span className="loader h-5 w-5 border-2 rounded-full"></span> : 'Deposit Now'}
             </button>
           </div>
@@ -197,22 +197,22 @@ export default function DepositPage() {
       </div>
       
       <div className="glass-effect rounded-xl p-6 custom-shadow">
-        <h3 className="font-medium text-white mb-4">How It Works</h3>
-        <ul className="space-y-4 text-sm text-gray-300">
+        <h3 className="font-medium text-foreground mb-4">How It Works</h3>
+        <ul className="space-y-4 text-sm text-muted-foreground">
         <li className="flex items-start">
-            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">1</span>
+            <span className="bg-muted text-primary rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">1</span>
             <span>Enter your M-Pesa number and amount in KES.</span>
         </li>
         <li className="flex items-start">
-            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">2</span>
+            <span className="bg-muted text-primary rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">2</span>
             <span>Click 'Deposit Now' to receive an STK push.</span>
         </li>
         <li className="flex items-start">
-            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">3</span>
+            <span className="bg-muted text-primary rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">3</span>
             <span>Enter your M-Pesa PIN on your phone to confirm.</span>
         </li>
         <li className="flex items-start">
-            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">4</span>
+            <span className="bg-muted text-primary rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">4</span>
             <span>Funds are credited to your Deriv account instantly!</span>
         </li>
         </ul>
@@ -223,13 +223,13 @@ export default function DepositPage() {
       <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-6 animate-fade-in">
         <div className="glass-effect rounded-2xl p-8 max-w-sm w-full space-y-6 animate-scale-in custom-shadow">
           <div className="text-center">
-            <div className="w-20 h-20 mx-auto rounded-full bg-green-900/50 border-2 border-green-500 flex items-center justify-center mb-4">
-              <Check className="w-10 h-10 text-green-400" />
+            <div className="w-20 h-20 mx-auto rounded-full bg-success/10 border-2 border-success flex items-center justify-center mb-4">
+              <Check className="w-10 h-10 text-success" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">
+            <h3 className="text-xl font-bold text-foreground mb-2">
               Action Required
             </h3>
-            <p className="text-gray-300">
+            <p className="text-muted-foreground">
               {modalMessage}
             </p>
           </div>
@@ -239,7 +239,7 @@ export default function DepositPage() {
               setShowModal(false);
               router.push('/dashboard');
             }}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200"
+            className="w-full py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition duration-200"
           >
             Okay
           </button>

@@ -3,8 +3,66 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: 225 36% 11%;
+    --foreground: 210 40% 98%;
+    --card: 225 30% 15%;
+    --card-foreground: 210 40% 98%;
+    --popover: 225 30% 15%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 222 84% 59%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 262 83% 60%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 20%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 25%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 71% 45%;
+    --success-foreground: 210 40% 98%;
+    --warning: 45 93% 47%;
+    --warning-foreground: 210 40% 98%;
+    --border: 217 33% 22%;
+    --input: 217 33% 22%;
+    --ring: 222 84% 59%;
+    --radius: 0.8rem;
+  }
+
+  .dark {
+    --background: 225 36% 11%;
+    --foreground: 210 40% 98%;
+    --card: 225 30% 15%;
+    --card-foreground: 210 40% 98%;
+    --popover: 225 30% 15%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 222 84% 59%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 262 83% 60%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 20%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 25%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 71% 45%;
+    --success-foreground: 210 40% 98%;
+    --warning: 45 93% 47%;
+    --warning-foreground: 210 40% 98%;
+    --border: 217 33% 22%;
+    --input: 217 33% 22%;
+    --ring: 222 84% 59%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
   body {
-    @apply bg-slate-900 text-slate-200;
+    @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
   }
 
@@ -13,30 +71,30 @@
   }
   
   ::-webkit-scrollbar-track {
-    background: #1e293b;
+    background: hsl(var(--background));
   }
   
   ::-webkit-scrollbar-thumb {
-    background: #475569;
+    background: hsl(var(--muted));
     border-radius: 4px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background: #64748b;
+    background: hsl(var(--secondary));
   }
 }
 
 @layer components {
   .glass-effect {
-    @apply bg-slate-800/70 backdrop-blur-xl border border-slate-700;
+    @apply bg-card/70 backdrop-blur-xl border border-border;
   }
   
   .custom-shadow {
-    @apply shadow-lg shadow-blue-500/5;
+    @apply shadow-lg shadow-primary/5;
   }
 
   .loader {
-    border-top-color: #3b82f6; /* blue-500 */
+    border-top-color: hsl(var(--primary));
     -webkit-animation: spinner 1.5s linear infinite;
     animation: spinner 1.5s linear infinite;
   }

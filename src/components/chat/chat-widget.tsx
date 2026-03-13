@@ -111,7 +111,7 @@ export default function ChatWidget() {
         <Button
           onClick={() => setIsOpen(!isOpen)}
           size="icon"
-          className="rounded-full w-14 h-14 bg-blue-600 hover:bg-blue-700 shadow-lg"
+          className="rounded-full w-14 h-14 bg-primary hover:bg-primary/90 shadow-lg"
         >
           {isOpen ? <X /> : <MessageSquare />}
           <span className="sr-only">Toggle Chat</span>
@@ -121,8 +121,8 @@ export default function ChatWidget() {
       {isOpen && (
         <div className="fixed bottom-24 right-6 z-40 w-full max-w-sm glass-effect rounded-xl shadow-2xl slide-in custom-shadow">
           <div className="flex flex-col h-[500px]">
-            <header className="p-4 border-b border-slate-700 flex items-center justify-between">
-              <h3 className="font-bold text-white">AbePay Support</h3>
+            <header className="p-4 border-b border-border flex items-center justify-between">
+              <h3 className="font-bold text-foreground">AbePay Support</h3>
             </header>
             <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
               <div className="space-y-4">
@@ -136,8 +136,8 @@ export default function ChatWidget() {
                     <div
                       className={`max-w-xs md:max-w-md rounded-lg px-4 py-2 text-sm ${
                         message.role === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-700 text-slate-200'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground'
                       }`}
                     >
                       {message.content}
@@ -146,20 +146,20 @@ export default function ChatWidget() {
                 ))}
                 {isLoading && (
                   <div className="flex justify-start gap-2">
-                     <div className="bg-slate-700 text-slate-200 rounded-lg px-4 py-2 text-sm">
+                     <div className="bg-muted text-muted-foreground rounded-lg px-4 py-2 text-sm">
                         <Loader2 className="w-4 h-4 animate-spin"/>
                      </div>
                   </div>
                 )}
               </div>
             </ScrollArea>
-            <footer className="p-4 border-t border-slate-700">
+            <footer className="p-4 border-t border-border">
               <form onSubmit={handleSubmit} className="flex gap-2">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask a question..."
-                  className="bg-slate-800 border-slate-600 focus:ring-blue-500"
+                  className="bg-input border-border focus:ring-ring"
                   disabled={isLoading}
                 />
                 <Button type="submit" size="icon" disabled={isLoading}>

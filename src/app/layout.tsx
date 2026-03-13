@@ -18,13 +18,13 @@ export default function RootLayout({
           <title>Configuration Error</title>
           <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
         </head>
-        <body className="bg-slate-900 text-slate-200">
-          <div className="flex h-screen w-full items-center justify-center bg-slate-900 text-center p-4">
+        <body className="bg-background text-foreground">
+          <div className="flex h-screen w-full items-center justify-center bg-background text-center p-4">
             <div className="p-8 glass-effect rounded-xl max-w-lg">
-              <h1 className="text-2xl font-bold text-red-500 mb-4">Configuration Error</h1>
-              <p className="text-slate-300">The Deriv App ID is missing.</p>
-              <p className="text-slate-400 mt-2">
-                Please add the environment variable <code className="bg-slate-800 border border-slate-700 p-1 rounded-md text-amber-400">NEXT_PUBLIC_DERIV_APP_ID</code> to your <code className="bg-slate-800 border border-slate-700 p-1 rounded-md text-amber-400">.env.local</code> file and restart the development server.
+              <h1 className="text-2xl font-bold text-destructive mb-4">Configuration Error</h1>
+              <p className="text-foreground">The Deriv App ID is missing.</p>
+              <p className="text-muted-foreground mt-2">
+                Please add the environment variable <code className="bg-muted border border-border p-1 rounded-md text-primary">NEXT_PUBLIC_DERIV_APP_ID</code> to your <code className="bg-muted border border-border p-1 rounded-md text-primary">.env.local</code> file and restart the development server.
               </p>
             </div>
           </div>
@@ -34,7 +34,7 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" style={{colorScheme: 'dark'}} suppressHydrationWarning>
       <head>
         <title>Abepay</title>
         <meta name="description" content="Instant deposits and withdrawals" />

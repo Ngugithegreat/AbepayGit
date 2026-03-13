@@ -73,24 +73,24 @@ export default function CreatePasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-md space-y-8">
         {/* Icon */}
         <div className="flex justify-center">
           <div className="relative">
-            <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-purple-600 to-purple-500 flex items-center justify-center shadow-2xl">
-              <Lock className="w-16 h-16 text-white" strokeWidth={2.5} />
+            <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-secondary to-secondary/80 flex items-center justify-center shadow-2xl">
+              <Lock className="w-16 h-16 text-secondary-foreground" strokeWidth={2.5} />
             </div>
-            <div className="absolute -bottom-2 -right-2 w-12 h-12 rounded-xl bg-gradient-to-br from-purple-700 to-purple-800 flex items-center justify-center">
-              <Shield className="w-6 h-6 text-white" />
+            <div className="absolute -bottom-2 -right-2 w-12 h-12 rounded-xl bg-gradient-to-br from-secondary/80 to-secondary/70 flex items-center justify-center">
+              <Shield className="w-6 h-6 text-secondary-foreground" />
             </div>
           </div>
         </div>
 
         {/* Title */}
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold text-white">Create Password</h1>
-          <p className="text-gray-400 text-sm">
+          <h1 className="text-2xl font-bold text-foreground">Create Password</h1>
+          <p className="text-muted-foreground text-sm">
             Please create and confirm the password for your account
           </p>
         </div>
@@ -104,13 +104,13 @@ export default function CreatePasswordPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full h-14 px-4 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+              className="w-full h-14 px-4 bg-input border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-secondary focus:outline-none"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
@@ -123,26 +123,26 @@ export default function CreatePasswordPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm Password"
-              className="w-full h-14 px-4 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+              className="w-full h-14 px-4 bg-input border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-secondary focus:outline-none"
               required
             />
             <button
               type="button"
               onClick={() => setShowConfirm(!showConfirm)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
             >
               {showConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
 
           {error && (
-            <p className="text-red-400 text-sm text-center">{error}</p>
+            <p className="text-destructive text-sm text-center">{error}</p>
           )}
 
           {/* Submit */}
           <button
             type="submit"
-            className="w-full h-14 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white rounded-xl font-semibold text-lg shadow-xl transition-all mt-6"
+            className="w-full h-14 bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary/80 text-secondary-foreground rounded-xl font-semibold text-lg shadow-xl transition-all mt-6"
           >
             Finish
           </button>
