@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -7,69 +6,64 @@ import { useRouter, useSearchParams } from 'next/navigation';
 export default function AuthCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
+  const [status, setStatus] = useState('processing');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const handleAuth = async () => {
-      const token1 = searchParams.get('token1');
-      const accounts = searchParams.get('acct1');
-
-      if (!token1 || !accounts) {
-        setStatus('error');
-        setTimeout(() => router.push('/login'), 2000);
-        return;
-      }
-
+    const processAuth = async () => {
       try {
-        console.log('🔐 Storing auth data...');
+        const token = searchParams.get('token1');
+        const accounts = searchParams.get('acct1');
 
-        // Just store directly in localStorage - NO API CALLS
-        localStorage.setItem('deriv_token1', token1);
+        if (!token || !accounts) {
+          throw new Error('Missing auth parameters');
+        }
+
+        console.log('🔐 Processing authentication...');
+
+        // Store token immediately
+        localStorage.setItem('deriv_token1', token);
         localStorage.setItem('deriv_accounts', accounts);
 
-        // Get user info ONCE
-        const { WebSocket } = (await import('ws')) as any;
-        const ws = new WebSocket(
-          `wss://ws.derivws.com/websockets/v3?app_id=${process.env.NEXT_PUBLIC_DERIV_APP_ID}`
-        );
+        // Fetch user info from Deriv directly
+        const ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=123981');
 
         const userInfo = await new Promise<any>((resolve, reject) => {
           const timeout = setTimeout(() => {
             ws.close();
-            reject(new Error('Timeout'));
+            reject(new Error('Connection timeout'));
           }, 10000);
 
-          ws.on('open', () => {
-            ws.send(JSON.stringify({ authorize: token1 }));
-          });
+          ws.onopen = () => {
+            ws.send(JSON.stringify({ authorize: token }));
+          };
 
-          ws.on('message', (data: any) => {
-            const response = JSON.parse(data.toString());
-
-            if (response.error) {
+          ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.error) {
               clearTimeout(timeout);
               ws.close();
-              reject(new Error(response.error.message));
+              reject(new Error(data.error.message));
               return;
             }
 
-            if (response.authorize) {
+            if (data.authorize) {
               clearTimeout(timeout);
               ws.close();
               resolve({
-                loginid: response.authorize.loginid,
-                email: response.authorize.email,
-                fullname: response.authorize.fullname,
-                balance: response.authorize.balance,
+                loginid: data.authorize.loginid,
+                email: data.authorize.email,
+                fullname: data.authorize.fullname,
+                balance: data.authorize.balance,
               });
             }
-          });
+          };
 
-          ws.on('error', (error: any) => {
-            clearTimeout(timeout);
+          ws.onerror = () => {
             ws.close();
-            reject(error);
-          });
+            reject(new Error('WebSocket connection failed'));
+          };
         });
 
         // Store user info
@@ -80,57 +74,71 @@ export default function AuthCallbackPage() {
           name: userInfo.fullname,
         }));
 
-        // Store token in Redis for balance fetching
-        await fetch('/api/user/store-token-simple', {
+        // Store token in Redis for balance API
+        await fetch('/api/user/save-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             account: userInfo.loginid,
-            token: token1,
+            token: token,
           }),
         });
 
-        console.log('✅ Auth complete!');
+        console.log('✅ Authentication successful!');
         setStatus('success');
 
-        // Redirect to dashboard
+        // Redirect after short delay
         setTimeout(() => {
-          router.push('/dashboard');
+          router.replace('/dashboard');
         }, 1000);
 
-      } catch (error: any) {
-        console.error('❌ Auth error:', error);
+      } catch (err: any) {
+        console.error('❌ Auth error:', err);
+        setError(err.message);
         setStatus('error');
-        setTimeout(() => router.push('/login'), 2000);
+        
+        setTimeout(() => {
+          router.replace('/login');
+        }, 3000);
       }
     };
 
-    handleAuth();
+    processAuth();
   }, [router, searchParams]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center p-6">
       <div className="text-center space-y-6">
         {status === 'processing' && (
           <>
             <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
-            <p className="text-white text-xl">Setting up your account...</p>
+            <p className="text-white text-lg">Setting up your account...</p>
+            <p className="text-white/60 text-sm">Please wait</p>
           </>
         )}
+
         {status === 'success' && (
           <>
             <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-3xl">✓</span>
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
             </div>
-            <p className="text-white text-xl">Success!</p>
+            <p className="text-white text-lg font-semibold">Success!</p>
+            <p className="text-white/60 text-sm">Redirecting...</p>
           </>
         )}
+
         {status === 'error' && (
           <>
             <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-3xl">✗</span>
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </div>
-            <p className="text-white text-xl">Authentication failed</p>
+            <p className="text-white text-lg font-semibold">Authentication Failed</p>
+            <p className="text-white/60 text-sm">{error}</p>
+            <p className="text-white/40 text-xs">Redirecting to login...</p>
           </>
         )}
       </div>

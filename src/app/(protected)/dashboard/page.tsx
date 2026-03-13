@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff, Loader2, RefreshCw } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   
   const [showBalance, setShowBalance] = useState(true);
@@ -85,23 +85,28 @@ export default function DashboardPage() {
     }
   }, [user?.loginid, fetchBalance]);
 
-  if (isAuthLoading) {
+  if (isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-900">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-500"/>
-        <p className="sr-only">Loading session...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-            <p className="text-slate-400 mb-4">Please log in to continue.</p>
-            <button onClick={() => router.push('/login')} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200">
-                Go to Login
-            </button>
+          <p className="text-gray-600 mb-4">Please log in to continue</p>
+          <button
+            onClick={() => router.push('/login')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg"
+          >
+            Go to Login
+          </button>
         </div>
       </div>
     );
@@ -143,7 +148,7 @@ export default function DashboardPage() {
             </div>
             
             <div className="space-y-1">
-              {(isAuthLoading || (isBalanceLoading && balance === null)) ? (
+              {(isLoading || (isBalanceLoading && balance === null)) ? (
                 <div className="h-12 bg-white/20 rounded-lg animate-pulse" />
               ) : (
                 <h2 className="text-5xl font-black text-white">
