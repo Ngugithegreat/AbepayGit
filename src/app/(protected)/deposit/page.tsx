@@ -3,7 +3,7 @@
 import { useAuth } from '@/context/auth-context';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowDownLeft, Info, Check } from 'lucide-react';
+import { ArrowDownLeft, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function DepositPage() {
@@ -55,6 +55,8 @@ export default function DepositPage() {
       setError(`Minimum deposit is ${minKes} KES ($${MIN_USD.toFixed(2)} USD)`);
     } else if (kes > maxKes) {
       setError(`Maximum deposit is ${maxKes.toLocaleString()} KES ($${MAX_USD.toLocaleString()} USD)`);
+    } else {
+      setError('');
     }
   };
 
@@ -124,8 +126,8 @@ export default function DepositPage() {
             <p className="text-gray-400">Add funds via M-Pesa</p>
         </div>
     </div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="md:col-span-2 glass-effect rounded-xl p-6 custom-shadow">
+    <div className="space-y-6">
+      <div className="glass-effect rounded-xl p-6 custom-shadow">
         <form onSubmit={handleDeposit} className="space-y-6">
            <div>
             <label htmlFor="depositAccount" className="block text-sm font-medium text-gray-300 mb-1">Deposit to Account</label>
@@ -146,9 +148,14 @@ export default function DepositPage() {
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <span className="text-gray-400 sm:text-sm">KES</span>
               </div>
-              <input type="number" id="depositAmount" value={kesAmount} onChange={handleKesChange} required min={minKes} max={maxKes} placeholder={`Minimum ${minKes}`} className="pl-12 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
+              <input type="number" id="depositAmount" value={kesAmount} onChange={handleKesChange} required min={minKes} max={maxKes} placeholder={`Minimum ${minKes.toLocaleString()}`} className="pl-12 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
             </div>
             
+            <div className="mt-2 flex items-center justify-between text-sm">
+                <span className="text-gray-400">Min: {minKes.toLocaleString()} KES</span>
+                <span className="text-gray-400">Rate: 1 USD = {exchangeRate} KES</span>
+            </div>
+
             {parseFloat(usdAmount) > 0 && !error && (
               <div className="mt-3 p-3 bg-green-900/50 rounded-lg border border-green-700">
                 <p className="text-sm text-green-300">
@@ -171,40 +178,29 @@ export default function DepositPage() {
           </div>
         </form>
       </div>
-      <div className="glass-effect rounded-xl p-6 custom-shadow space-y-6">
-        <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl p-4 border border-green-700/50">
-            <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-green-200 space-y-1">
-                <p className="font-semibold">Deposit Rules</p>
-                <p>• Minimum: ${minKes.toLocaleString()} KES ($${MIN_USD.toFixed(2)} USD)</p>
-                <p>• Maximum: ${maxKes.toLocaleString()} KES ($${MAX_USD.toLocaleString()} USD)</p>
-                <p>• Rate: ${exchangeRate} KES = $1 USD</p>
-                </div>
-            </div>
-        </div>
-        <div>
-            <h3 className="font-medium text-white mb-4">How It Works</h3>
-            <ul className="space-y-4 text-sm text-gray-300">
-            <li className="flex items-start">
-                <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">1</span>
-                <span>Enter your M-Pesa number and amount in KES.</span>
-            </li>
-            <li className="flex items-start">
-                <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">2</span>
-                <span>Click 'Deposit Now' to receive an STK push.</span>
-            </li>
-            <li className="flex items-start">
-                <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">3</span>
-                <span>Enter your M-Pesa PIN on your phone to confirm.</span>
-            </li>
-            <li className="flex items-start">
-                <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">4</span>
-                <span>Funds are credited to your Deriv account instantly!</span>
-            </li>
-            </ul>
-        </div>
-      </div>
+      
+      <div className="glass-effect rounded-xl p-6 custom-shadow">
+        <h3 className="font-medium text-white mb-4">How It Works</h3>
+        <ul className="space-y-4 text-sm text-gray-300">
+        <li className="flex items-start">
+            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">1</span>
+            <span>Enter your M-Pesa number and amount in KES.</span>
+        </li>
+        <li className="flex items-start">
+            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">2</span>
+            <span>Click 'Deposit Now' to receive an STK push.</span>
+        </li>
+        <li className="flex items-start">
+            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">3</span>
+            <span>Enter your M-Pesa PIN on your phone to confirm.</span>
+        </li>
+        <li className="flex items-start">
+            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">4</span>
+            <span>Funds are credited to your Deriv account instantly!</span>
+        </li>
+        </ul>
+    </div>
+
     </div>
     {showModal && (
       <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-6 animate-fade-in">
