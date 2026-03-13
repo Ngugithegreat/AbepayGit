@@ -49,11 +49,20 @@ export default function DashboardPage() {
           setIsLoadingTransactions(false);
         }
       };
-      fetchTransactions();
+      
+      fetchTransactions(); // Fetch transactions on load
+
+      // Auto-refresh balance every 30 seconds
+      const interval = setInterval(() => {
+        refreshBalance();
+      }, 30000);
+      
+      return () => clearInterval(interval);
+
     } else {
         setIsLoadingTransactions(false);
     }
-  }, [selectedAccount]);
+  }, [selectedAccount, refreshBalance]);
 
   return (
     <div className="slide-in">
