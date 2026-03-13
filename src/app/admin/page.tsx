@@ -20,9 +20,6 @@ export default function AdminDashboard() {
   const [depositRate, setDepositRate] = useState(130);
   const [withdrawRate, setWithdrawRate] = useState(124);
 
-  const [syncAccount, setSyncAccount] = useState('');
-  const [syncBalance, setSyncBalance] = useState('');
-
   useEffect(() => {
     // Check if already authenticated in this session
     const authenticated = sessionStorage.getItem('admin_authenticated');
@@ -81,31 +78,6 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       alert('❌ Error updating rates');
-    }
-  };
-
-  const handleSyncBalance = async () => {
-    try {
-      const response = await fetch('/api/admin/sync-balance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          account: syncAccount,
-          balance: parseFloat(syncBalance),
-        }),
-      });
-  
-      const data = await response.json();
-  
-      if (data.success) {
-        alert('✅ Balance synced successfully!');
-        setSyncAccount('');
-        setSyncBalance('');
-      } else {
-        alert('❌ Failed: ' + data.error);
-      }
-    } catch (error) {
-      alert('❌ Error syncing balance');
     }
   };
 
@@ -270,50 +242,6 @@ export default function AdminDashboard() {
             Update Rates
           </button>
         </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Sync User Balance</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Manually set a user's balance (one-time sync with their actual Deriv balance)
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Deriv Account (e.g., CR2542302)
-              </label>
-              <input
-                type="text"
-                value={syncAccount}
-                onChange={(e) => setSyncAccount(e.target.value)}
-                placeholder="CR2542302"
-                className="w-full h-12 px-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Current Balance (USD)
-              </label>
-              <input
-                type="number"
-                value={syncBalance}
-                onChange={(e) => setSyncBalance(e.target.value)}
-                placeholder="1.01"
-                step="0.01"
-                className="w-full h-12 px-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={handleSyncBalance}
-            className="mt-4 h-12 px-8 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl font-semibold shadow-lg transition-all"
-          >
-            Sync Balance
-          </button>
-        </div>
-
 
         {/* Pending Deposits */}
         <div className="bg-white rounded-2xl p-6 shadow-sm">
