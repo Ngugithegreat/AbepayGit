@@ -1,16 +1,51 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user, selectedAccount, isLoading } = useAuth();
   const router = useRouter();
   const [showBalance, setShowBalance] = useState(true);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
+  const [stats, setStats] = useState({ totalDeposits: 0, transactionCount: 0 });
 
   const balance = selectedAccount?.balance;
+
+  useEffect(() => {
+    if (selectedAccount?.loginid) {
+      const fetchTransactions = async () => {
+        setIsLoadingTransactions(true);
+        try {
+          const response = await fetch(`/api/transactions?account=${selectedAccount.loginid}`);
+          const data = await response.json();
+
+          if (data.success) {
+            setTransactions(data.transactions);
+            // Calculate stats
+            const totalDeposits = data.transactions
+              .filter((tx: any) => tx.type === 'deposit' && tx.status === 'completed')
+              .reduce((sum: number, tx: any) => sum + tx.usdAmount, 0);
+            
+            setStats({
+              totalDeposits: totalDeposits,
+              transactionCount: data.transactions.length,
+            });
+          }
+        } catch (error) {
+          console.error('Failed to fetch transactions:', error);
+        } finally {
+          setIsLoadingTransactions(false);
+        }
+      };
+      fetchTransactions();
+    } else {
+        setIsLoadingTransactions(false);
+    }
+  }, [selectedAccount]);
 
   return (
     <div className="slide-in">
@@ -42,7 +77,7 @@ export default function DashboardPage() {
                 <div className="h-12 bg-white/20 rounded-lg animate-pulse" />
               ) : (
                 <h2 className="text-5xl font-black text-white">
-                  {showBalance ? `$${balance?.toFixed(2) || '0.00'}` : '••••••'}
+                  {showBalance ? `$${(balance || 0).toFixed(2)}` : '••••••'}
                 </h2>
               )}
             </div>
@@ -83,7 +118,7 @@ export default function DashboardPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-gray-400">Total Deposits</p>
-                                <p className="text-xl font-bold text-white">$0.00</p>
+                                <p className="text-xl font-bold text-white">${stats.totalDeposits.toFixed(2)}</p>
                             </div>
                         </div>
                          <div className="flex items-center gap-4">
@@ -92,7 +127,7 @@ export default function DashboardPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-gray-400">Transactions</p>
-                                <p className="text-xl font-bold text-white">0</p>
+                                <p className="text-xl font-bold text-white">{stats.transactionCount}</p>
                             </div>
                         </div>
                     </div>
@@ -101,10 +136,42 @@ export default function DashboardPage() {
 
             <div className="lg:col-span-2 glass-effect rounded-xl p-6 custom-shadow">
                 <h3 className="font-medium text-white mb-4">Recent Activity</h3>
-                <div className="text-center py-16 text-gray-500">
+                {isLoadingTransactions ? (
+                    <div className="text-center py-16 text-gray-500">
+                        <Loader2 className="w-12 h-12 mx-auto mb-2 opacity-50 animate-spin" />
+                        <p>Loading transactions...</p>
+                    </div>
+                ) : transactions.length > 0 ? (
+                  <div className="space-y-3">
+                    {transactions.slice(0, 5).map((tx: any) => (
+                      <div key={tx.id} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                        <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tx.type === 'deposit' ? 'bg-green-900/50' : 'bg-purple-900/50'}`}>
+                                {tx.type === 'deposit' ? <ArrowDownLeft className="w-5 h-5 text-green-400"/> : <ArrowUpRight className="w-5 h-5 text-purple-400"/>}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-white">${tx.usdAmount.toFixed(2)}</p>
+                              <p className="text-xs text-gray-400">{tx.kesAmount.toLocaleString()} KES</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                           <div className="flex items-center justify-end gap-2 text-xs">
+                                <div className={`w-2 h-2 rounded-full ${tx.status === 'completed' ? 'bg-green-400' : 'bg-yellow-400'}`}></div>
+                                <p className="text-gray-300 capitalize">{tx.status}</p>
+                           </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(tx.timestamp).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-16 text-gray-500">
                     <History className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p>No transactions yet</p>
-                </div>
+                  </div>
+                )}
             </div>
         </div>
     </div>

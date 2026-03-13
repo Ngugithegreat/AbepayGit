@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPendingDeposit, removePendingDeposit } from '@/lib/pending-deposits';
 import { transferToClient } from '@/lib/deriv-api';
 import { getDepositRate } from '@/lib/exchange-rates';
+import { Redis } from '@upstash/redis';
 
 
 export async function POST(request: NextRequest) {
@@ -62,10 +63,40 @@ export async function POST(request: NextRequest) {
       if (transferResult.success) {
         console.log('🎉 Transfer successful!', transferResult);
         
+        // Store transaction history
+        const redis = new Redis({
+          url: process.env.UPSTASH_REDIS_REST_URL!,
+          token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+        });
+
+        const transaction = {
+          id: CheckoutRequestID,
+          type: 'deposit',
+          kesAmount,
+          usdAmount,
+          mpesaReceipt,
+          derivAccount: pendingDeposit.derivAccount,
+          phoneNumber: pendingDeposit.phoneNumber,
+          transactionId: transferResult.transaction_id,
+          timestamp: Date.now(),
+          status: 'completed',
+        };
+
+        await redis.set(
+          `transaction:${CheckoutRequestID}`,
+          JSON.stringify(transaction)
+        );
+
+        // Add to user's transaction list
+        await redis.lpush(
+          `user_transactions:${pendingDeposit.derivAccount}`,
+          CheckoutRequestID
+        );
+
+        console.log('💾 Transaction saved');
+        
         // Remove from pending
         await removePendingDeposit(CheckoutRequestID);
-        
-        // TODO: Store completed transaction in database
         
       } else {
         console.error('❌ Transfer failed:', transferResult.error);
