@@ -47,9 +47,8 @@ class DerivAPI {
           const data = JSON.parse(msg.data);
           
           // Check for balance update
-          if (data.balance && !data.req_id) {
+          if (data.balance) { // This can be a response to a request or a subscription update
             console.log("💰 Balance update received:", data.balance);
-            // Trigger a callback for balance updates
             if (this.onBalanceUpdate) {
               this.onBalanceUpdate(parseFloat(data.balance.balance));
             }
@@ -138,6 +137,7 @@ interface AuthContextType {
   isLoading: boolean;
   logout: () => void;
   updateBalance: (newBalance: number) => void;
+  refreshBalance: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -174,6 +174,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedAccount]);
 
+  const refreshBalance = useCallback(async () => {
+    if (!api || !selectedAccount) {
+      console.log("Cannot refresh: No API or selected account");
+      return;
+    }
+    console.log("🔄 Requesting balance refresh...");
+    try {
+      await api.sendRequest({ balance: 1 });
+      console.log("✅ Balance refresh request sent.");
+    } catch (error) {
+      console.error("❌ Failed to send balance refresh request:", error);
+    }
+  }, [api, selectedAccount]);
+
   useEffect(() => {
     const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
     if (!appId) {
@@ -184,7 +198,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log("🔧 Init API");
     const derivApi = new DerivAPI({ app_id: Number(appId) });
     
-    // Set balance update callback
     derivApi.onBalanceUpdate = (newBalance: number) => {
       console.log("💰 Balance updated to:", newBalance);
       updateBalance(newBalance);
@@ -200,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     console.log("🚪 Logout");
     localStorage.removeItem('deriv_user');
-    localStorage.removeItem('deriv_token'); // Also clear any old tokens
+    localStorage.removeItem('deriv_token');
     setUser(null);
     setSelectedAccount(null);
     globalAuthLock = false;
@@ -227,13 +240,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (response.error) {
         console.error("❌ Auth failed:", response.error.message);
-        logout(); // Token is invalid/expired, so clear session
+        logout();
         return false;
       }
       
       const authData = response.authorize as DerivUser;
-
-      // Persist the valid token for future sessions
       localStorage.setItem('deriv_token', token);
 
       console.log('=== USER DATA ===');
@@ -243,20 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const authorizedLoginId = authData.loginid;
       let localSelectedAccount: DerivAccount | null = null;
-
-      const mainAccount = authData.account_list?.find(acc => acc.loginid === authorizedLoginId);
-
-      if (!mainAccount) {
-          console.error("❌ Authorized account not found in account list. This should not happen.");
-          logout();
-          return false;
-      }
       
-      // A payment agent might log in with their agent account. We need to find their client account.
-      // We assume the client account is the first non-virtual, non-payment-agent account.
-      // A simple heuristic for a non-agent account is one that does NOT have `is_payment_agent: 1`.
-      // Since we may not have that flag, we will find the first real account that is NOT the authorized account if the authorized account is an agent.
-      // For now, we'll just find the first real, non-virtual account.
       const clientAccount = authData.account_list?.find(acc => acc.is_virtual === 0);
 
       if (clientAccount) {
@@ -276,7 +274,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('deriv_user', JSON.stringify(authData));
       console.log("✅ Auth success:", authData.email);
 
-      // If the account we want to view is different from the one we logged in with, switch to it.
       if (localSelectedAccount && localSelectedAccount.loginid !== authorizedLoginId) {
         console.log(`🔌 Authorized as ${authorizedLoginId}, but need balance for ${localSelectedAccount.loginid}. Switching accounts...`);
         try {
@@ -292,7 +289,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Subscribe to balance updates for the now-active account
       try {
         await api.sendRequest({
           balance: 1,
@@ -321,7 +317,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const init = async () => {
       setIsLoading(true);
-      // Prioritize checking for a session token to establish a live connection
       const token = localStorage.getItem('deriv_token');
 
       if (token) {
@@ -337,7 +332,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     };
     
-    // Give API time to connect before we check for tokens
     setTimeout(init, 1500);
   }, [api, verifyToken, logout]);
 
@@ -348,6 +342,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     logout,
     updateBalance,
+    refreshBalance,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

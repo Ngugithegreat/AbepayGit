@@ -3,17 +3,25 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff, Loader2, RefreshCw } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, selectedAccount, isLoading } = useAuth();
+  const { user, selectedAccount, isLoading, refreshBalance } = useAuth();
   const router = useRouter();
   const [showBalance, setShowBalance] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [stats, setStats] = useState({ totalDeposits: 0, transactionCount: 0 });
 
   const balance = selectedAccount?.balance;
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshBalance();
+    // A small delay to give a feeling of action and allow websocket to respond
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   useEffect(() => {
     if (selectedAccount?.loginid) {
@@ -64,16 +72,26 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-white/80 text-sm font-medium">Deriv Balance</span>
-              <button
-                onClick={() => setShowBalance(!showBalance)}
-                className="text-white/80 hover:text-white"
-              >
-                {showBalance ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing || isLoading}
+                  className="text-white/80 hover:text-white disabled:opacity-50"
+                  title="Refresh balance"
+                >
+                  <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
+                <button
+                  onClick={() => setShowBalance(!showBalance)}
+                  className="text-white/80 hover:text-white"
+                >
+                  {showBalance ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
             
             <div className="space-y-1">
-              {isLoading ? (
+              {(isLoading && !balance) ? (
                 <div className="h-12 bg-white/20 rounded-lg animate-pulse" />
               ) : (
                 <h2 className="text-5xl font-black text-white">
