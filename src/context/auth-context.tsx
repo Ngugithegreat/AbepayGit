@@ -224,15 +224,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('=== DERIV API RESPONSE ===');
       console.log('Full response:', response);
-      console.log('Authorize data:', response.authorize);
-      console.log('Account list:', response.authorize?.account_list);
       
       if (response.error) {
         console.error("❌ Auth failed:", response.error.message);
+        logout(); // Token is invalid/expired, so clear session
         return false;
       }
+      
+      console.log('Authorize data:', response.authorize);
+      console.log('Account list:', response.authorize?.account_list);
 
       const authData = response.authorize as DerivUser;
+
+      // Persist the valid token for future sessions
+      localStorage.setItem('deriv_token', token);
 
       console.log('=== USER DATA ===');
       console.log('Full user:', authData);
@@ -254,7 +259,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log('Account ID:', mainAccount.loginid);
             console.log('Currency:', mainAccount.currency);
             console.log('Balance:', mainAccount.balance);
-            console.log('Balance type:', typeof mainAccount.balance);
       } else {
           const realAccount = authData.account_list?.find(acc => acc.is_virtual === 0);
           if (realAccount) {
@@ -265,7 +269,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.log('Account ID:', realAccount.loginid);
               console.log('Currency:', realAccount.currency);
               console.log('Balance:', realAccount.balance);
-              console.log('Balance type:', typeof realAccount.balance);
           } else {
               console.error("❌ User logged in with a virtual account, and no real accounts were found.");
               return false;
@@ -291,11 +294,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     } catch (error: any) {
       console.error("❌ Auth error:", error.message);
+      logout();
       return false;
     } finally {
       globalAuthLock = false;
     }
-  }, [api]);
+  }, [api, logout]);
 
   useEffect(() => {
     if (!api || hasInitialized.current) return;
@@ -303,47 +307,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasInitialized.current = true;
 
     const init = async () => {
-      const storedUserJSON = localStorage.getItem('deriv_user');
-      const tempToken = localStorage.getItem('deriv_token');
+      setIsLoading(true);
+      // Prioritize checking for a session token to establish a live connection
+      const token = localStorage.getItem('deriv_token');
 
-      if (storedUserJSON) {
-        console.log("📦 User object found, re-hydrating session");
-        const storedUser = JSON.parse(storedUserJSON) as DerivUser;
-        setUser(storedUser);
-
-        const mainLoginId = storedUser.loginid;
-        const mainAccount = storedUser.account_list?.find(acc => acc.loginid === mainLoginId);
-        
-        let accountToSet: DerivAccount | null = null;
-        if (mainAccount && mainAccount.is_virtual === 0) {
-            accountToSet = mainAccount;
-        } else {
-            accountToSet = storedUser.account_list?.find(acc => acc.is_virtual === 0) || null;
-        }
-        
-        setSelectedAccount(accountToSet);
-        setIsLoading(false);
-      } else if (tempToken) {
-        // SLOW PATH: User just came back from OAuth. We have a temporary token.
-        // We need to verify it, get the user object, store it, and delete the temp token.
-        console.log("📦 Temp token found, verifying session");
-        const success = await verifyToken(tempToken);
-        if (success) {
-          localStorage.removeItem('deriv_token'); // Clean up the temp token
-        } else {
-          // Verification failed, clean up everything.
+      if (token) {
+        console.log("📦 Token found from previous session, verifying...");
+        const success = await verifyToken(token);
+        if (!success) {
+          console.log("⚠️ Token invalid, logging out.");
           logout();
         }
-        setIsLoading(false);
       } else {
-        // NO-SESSION PATH: User is logged out.
-        console.log("ℹ️ No session, not logged in");
-        setIsLoading(false);
+        console.log("ℹ️ No session token found. User is likely logged out.");
       }
+      setIsLoading(false);
     };
     
     // Give API time to connect before we check for tokens
-    setTimeout(init, 2000);
+    setTimeout(init, 1500);
   }, [api, verifyToken, logout]);
 
   const value: AuthContextType = {
