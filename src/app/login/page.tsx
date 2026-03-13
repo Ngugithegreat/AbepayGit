@@ -1,185 +1,165 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/context/auth-context';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
-function LoginContent() {
+export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { toast } = useToast();
-  const { user, isLoading } = useAuth();
-  
-  const [authUrl, setAuthUrl] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [hasAccount, setHasAccount] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // If user is already logged in via context, go to dashboard
+  const DERIV_APP_ID = process.env.NEXT_PUBLIC_DERIV_APP_ID || '123981';
+  
+  const [authUrl, setAuthUrl] = useState('');
+
   useEffect(() => {
-    if (!isLoading && user) {
-      router.push('/dashboard');
+    if (typeof window !== 'undefined') {
+      const redirectUri = `${window.location.protocol}//${window.location.host}/auth/callback`;
+      const derivAuthUrl = new URL('https://oauth.deriv.com/oauth2/authorize');
+      derivAuthUrl.searchParams.set('app_id', DERIV_APP_ID);
+      derivAuthUrl.searchParams.set('redirect_uri', redirectUri);
+      derivAuthUrl.searchParams.set('scope', 'read+payments+trade+trading_information');
+      derivAuthUrl.searchParams.set('prompt', 'login');
+      setAuthUrl(derivAuthUrl.toString());
     }
-  }, [user, isLoading, router]);
+  }, [DERIV_APP_ID]);
 
-  // Check for local account on mount
+
   useEffect(() => {
+    // Check if user already has an account
     const userInfo = localStorage.getItem('user_info');
-    const userHasPassword = localStorage.getItem('user_has_password');
-    if (userInfo && userHasPassword) {
+    const hasPassword = localStorage.getItem('user_has_password');
+    
+    if (userInfo && hasPassword === 'true') {
       const user = JSON.parse(userInfo);
       setEmail(user.email);
       setHasAccount(true);
     }
   }, []);
 
-  // Handle auth errors from callback
-  useEffect(() => {
-    const error = searchParams.get('error');
-    if (error) {
-      toast({
-        title: 'Authentication Failed',
-        description: 'There was an error during the linking process. Please try again.',
-        variant: 'destructive',
-      });
-      router.replace('/login', { scroll: false });
-    }
-  }, [searchParams, toast, router]);
-
-  // Construct the Deriv OAuth URL
-  useEffect(() => {
-    const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
-    if (appId && typeof window !== 'undefined') {
-      const redirectUri = `${window.location.protocol}//${window.location.host}/auth/callback`;
-      const derivAuthUrl = new URL('https://oauth.deriv.com/oauth2/authorize');
-      derivAuthUrl.searchParams.set('app_id', appId);
-      derivAuthUrl.searchParams.set('redirect_uri', redirectUri);
-      derivAuthUrl.searchParams.set('scope', 'read+payments+trade+trading_information');
-      derivAuthUrl.searchParams.set('prompt', 'login');
-      setAuthUrl(derivAuthUrl.toString());
-    }
-  }, []);
-  
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoggingIn(true);
-
-    const storedPassword = localStorage.getItem('user_password');
-    if (password === storedPassword) {
-      console.log('✅ Password correct, redirecting...');
-      router.push('/dashboard');
-    } else {
-      toast({
-        title: 'Incorrect Password',
-        description: 'The password you entered is incorrect. Please try again.',
-        variant: 'destructive',
-      });
-      setIsLoggingIn(false);
+    setIsLoading(true);
+    
+    try {
+      const storedPassword = localStorage.getItem('user_password');
+      
+      if (password === storedPassword) {
+        console.log('✅ Login successful!');
+        router.push('/dashboard');
+      } else {
+        alert('Incorrect password. Please try again.');
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Login failed. Please try again.');
+      setIsLoading(false);
     }
   };
-  
-  if (isLoading) {
-      return (
-          <div className="min-h-screen flex items-center justify-center bg-background">
-              <Loader2 className="w-16 h-16 animate-spin text-primary"/>
-          </div>
-      );
-  }
-
-  // Prevent flash of login form if user is already logged in
-  if (user) {
-    return null;
-  }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md glass-effect rounded-xl p-8 custom-shadow slide-in">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-primary">
-            Abepay
-          </h2>
-          <p className="text-muted-foreground mt-2">
-            {hasAccount ? 'Welcome back! Log in to your account.' : 'Instant deposits and withdrawals'}
-          </p>
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-md space-y-8">
+        {/* Logo */}
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-xl">
+              <span className="text-4xl font-black text-primary-foreground">A</span>
+            </div>
+          </div>
+          <h1 className="text-4xl font-black text-foreground">ABEPAY</h1>
+          <p className="text-muted-foreground">Instant Transactions</p>
         </div>
 
+        {/* Login Form or OAuth Button */}
         {hasAccount ? (
-          <form onSubmit={handlePasswordLogin} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-muted-foreground mb-1">Email Address</label>
-              <input 
-                id="email"
-                type="email" 
-                value={email}
-                disabled
-                className="w-full p-3 bg-input border-border rounded-lg text-muted-foreground cursor-not-allowed"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-muted-foreground mb-1">Password</label>
-              <div className="relative">
-                <input 
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3 bg-input border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <button 
-                type="submit"
-                disabled={isLoggingIn}
-                className="w-full py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:opacity-50"
-              >
-                {isLoggingIn ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <a 
-                href={authUrl || '#'} 
-                onClick={(e) => {
-                  if (!authUrl) {
-                    e.preventDefault();
-                    toast({ title: 'Please wait', description: 'Generating login link...' });
-                  }
-                }}
-                className="w-full py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition duration-200 flex items-center justify-center"
-              >
-                Sign Up with Deriv
-              </a>
-            </div>
+          <div className="glass-effect rounded-2xl p-8 custom-shadow space-y-6">
             <div className="text-center">
-              <p className="text-xs text-muted-foreground/80">(You will be redirected to Deriv to link your account)</p>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Welcome Back</h2>
+              <p className="text-muted-foreground text-sm">Enter your password to continue</p>
             </div>
+
+            <form onSubmit={handlePasswordLogin} className="space-y-4">
+              {/* Email (pre-filled, disabled) */}
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  disabled
+                  className="w-full h-14 px-4 border border-border rounded-xl bg-input text-foreground font-medium"
+                />
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full h-14 px-4 pr-12 border border-border bg-input rounded-xl focus:ring-ring focus:border-ring focus:outline-none text-foreground"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading || !password}
+                className="w-full h-14 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground rounded-xl font-semibold text-lg shadow-lg transition-all flex items-center justify-center"
+              >
+                {isLoading ? <Loader2 className="w-6 h-6 animate-spin"/> : 'Login'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  // Clear account and start fresh
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  window.location.reload();
+                }}
+                className="w-full text-sm text-primary hover:text-primary/80 font-medium"
+              >
+                Use a different account
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="glass-effect rounded-2xl p-8 custom-shadow space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Get Started</h2>
+              <p className="text-muted-foreground text-sm">Connect with your Deriv account</p>
+            </div>
+            
+            <a
+              href={authUrl}
+              className="block w-full h-14 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl font-semibold text-lg shadow-lg transition-all flex items-center justify-center"
+            >
+              Login with Deriv
+            </a>
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginContent />
-    </Suspense>
   );
 }
