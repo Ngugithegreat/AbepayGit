@@ -231,9 +231,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
       
-      console.log('Authorize data:', response.authorize);
-      console.log('Account list:', response.authorize?.account_list);
-
       const authData = response.authorize as DerivUser;
 
       // Persist the valid token for future sessions
@@ -245,47 +242,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('All accounts:', authData.account_list);
 
       const authorizedLoginId = authData.loginid;
+      let localSelectedAccount: DerivAccount | null = null;
+
       const mainAccount = authData.account_list?.find(acc => acc.loginid === authorizedLoginId);
 
       if (!mainAccount) {
           console.error("❌ Authorized account not found in account list. This should not happen.");
+          logout();
+          return false;
+      }
+      
+      // A payment agent might log in with their agent account. We need to find their client account.
+      // We assume the client account is the first non-virtual, non-payment-agent account.
+      // A simple heuristic for a non-agent account is one that does NOT have `is_payment_agent: 1`.
+      // Since we may not have that flag, we will find the first real account that is NOT the authorized account if the authorized account is an agent.
+      // For now, we'll just find the first real, non-virtual account.
+      const clientAccount = authData.account_list?.find(acc => acc.is_virtual === 0);
+
+      if (clientAccount) {
+          localSelectedAccount = clientAccount;
+          console.log('=== SELECTED CLIENT ACCOUNT ===');
+          console.log('Account ID:', localSelectedAccount.loginid);
+          console.log('Currency:', localSelectedAccount.currency);
+          console.log('Initial Balance:', localSelectedAccount.balance);
+      } else {
+          console.error("❌ No real client accounts were found.");
+          logout();
           return false;
       }
 
-      if (mainAccount.is_virtual === 0) {
-            setSelectedAccount(mainAccount);
-            console.log('=== SELECTED ACCOUNT ===');
-            console.log('Real account found:', mainAccount);
-            console.log('Account ID:', mainAccount.loginid);
-            console.log('Currency:', mainAccount.currency);
-            console.log('Balance:', mainAccount.balance);
-      } else {
-          const realAccount = authData.account_list?.find(acc => acc.is_virtual === 0);
-          if (realAccount) {
-              console.warn("⚠️ User logged in with virtual account, switching to first real account:", realAccount.loginid);
-              setSelectedAccount(realAccount);
-              console.log('=== SELECTED ACCOUNT ===');
-              console.log('Real account found:', realAccount);
-              console.log('Account ID:', realAccount.loginid);
-              console.log('Currency:', realAccount.currency);
-              console.log('Balance:', realAccount.balance);
-          } else {
-              console.error("❌ User logged in with a virtual account, and no real accounts were found.");
-              return false;
-          }
-      }
-
+      setSelectedAccount(localSelectedAccount);
       setUser(authData);
       localStorage.setItem('deriv_user', JSON.stringify(authData));
       console.log("✅ Auth success:", authData.email);
 
-      // Subscribe to balance updates
+      // If the account we want to view is different from the one we logged in with, switch to it.
+      if (localSelectedAccount && localSelectedAccount.loginid !== authorizedLoginId) {
+        console.log(`🔌 Authorized as ${authorizedLoginId}, but need balance for ${localSelectedAccount.loginid}. Switching accounts...`);
+        try {
+          const switchResponse = await api.sendRequest({ account_switch: localSelectedAccount.loginid });
+          if (switchResponse.error) {
+            throw new Error(`Failed to switch to account ${localSelectedAccount.loginid}: ${switchResponse.error.message}`);
+          }
+          console.log(`✅ Switched to account ${localSelectedAccount.loginid} for balance updates.`);
+        } catch (switchError) {
+          console.error("❌ Account switch failed:", switchError);
+          logout();
+          return false;
+        }
+      }
+
+      // Subscribe to balance updates for the now-active account
       try {
         await api.sendRequest({
           balance: 1,
           subscribe: 1
         });
-        console.log("✅ Subscribed to balance updates");
+        console.log(`✅ Subscribed to balance updates for ${localSelectedAccount?.loginid}`);
       } catch (err) {
         console.error("Failed to subscribe to balance updates:", err);
       }
