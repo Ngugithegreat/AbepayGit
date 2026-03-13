@@ -3,34 +3,47 @@
 import { useAuth } from '@/context/auth-context';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { ArrowDownLeft, Info } from 'lucide-react';
 
 export default function DepositPage() {
   const { selectedAccount } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [kesAmount, setKesAmount] = useState('');
-  const [usdAmount, setUsdAmount] = useState(0);
+  const [usdAmount, setUsdAmount] = useState('0.00');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [exchangeRate, setExchangeRate] = useState(130); // Default rate
+
+  const MIN_USD = 1.00;
+  const MAX_USD = 2000.00;
+  const MIN_KES = MIN_USD * exchangeRate;
+  const MAX_KES = MAX_USD * exchangeRate;
 
   useEffect(() => {
     const savedRate = localStorage.getItem('deposit_rate');
     if (savedRate) {
       setExchangeRate(Number(savedRate));
     }
-  }, []);
+  }, [exchangeRate]);
 
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const kes = e.target.value;
-    setKesAmount(kes);
-    setMessage('');
-    if (kes && !isNaN(parseFloat(kes))) {
-        setUsdAmount(parseFloat(kes) / exchangeRate);
-    } else {
-        setUsdAmount(0);
+  const handleKesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setKesAmount(value);
+    setError('');
+    
+    const kes = parseFloat(value) || 0;
+    const usd = kes / exchangeRate;
+    setUsdAmount(usd.toFixed(2));
+
+    // Validate amount
+    if (kes > 0 && kes < MIN_KES) {
+      setError(`Minimum deposit is ${MIN_KES} KES ($${MIN_USD.toFixed(2)} USD)`);
+    } else if (kes > MAX_KES) {
+      setError(`Maximum deposit is ${MAX_KES.toLocaleString()} KES ($${MAX_USD.toLocaleString()} USD)`);
     }
-  }
+  };
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,18 +55,21 @@ export default function DepositPage() {
         });
         return;
     }
-    const kesAmountNumber = parseFloat(kesAmount);
-    if (usdAmount < 1) {
-        toast({
-            title: "Error",
-            description: `Minimum deposit is KES ${exchangeRate.toFixed(2)} (equivalent to $1 USD).`,
-            variant: "destructive"
-        });
-        return;
+
+    const kesValue = parseFloat(kesAmount);
+    if (kesValue < MIN_KES) {
+      setError(`Minimum deposit is ${MIN_KES} KES ($${MIN_USD.toFixed(2)} USD)`);
+      return;
+    }
+
+    if (kesValue > MAX_KES) {
+      setError(`Maximum deposit is ${MAX_KES.toLocaleString()} KES ($${MAX_USD.toLocaleString()} USD)`);
+      return;
     }
     
     setIsLoading(true);
     setMessage('');
+    setError('');
 
     try {
         const response = await fetch('/api/mpesa/initiate', {
@@ -61,7 +77,7 @@ export default function DepositPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 phone: phone,
-                amount: kesAmountNumber,
+                amount: kesValue,
                 derivAccount: selectedAccount.loginid
             })
         });
@@ -69,25 +85,19 @@ export default function DepositPage() {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            setMessage('✅ STK push sent! Check your phone and enter M-Pesa PIN to complete the transaction.');
             toast({
                 title: "Action Required",
-                description: "Check your phone to complete the M-Pesa payment.",
+                description: `✅ STK push sent! Check your phone (${phone}) and enter your M-Pesa PIN.`,
             });
+            setKesAmount('');
+            setUsdAmount('0.00');
+            setPhone('');
         } else {
-            toast({
-                title: "Payment Failed",
-                description: data.error || "Could not initiate M-Pesa payment. Please try again.",
-                variant: "destructive"
-            });
+            setError(data.error || "Could not initiate M-Pesa payment. Please try again.");
         }
     } catch (error) {
         console.error("Deposit error:", error);
-        toast({
-            title: "Error",
-            description: "An unexpected error occurred. Please check your connection and try again.",
-            variant: "destructive"
-        });
+        setError("An unexpected network error occurred. Please try again.");
     } finally {
         setIsLoading(false);
     }
@@ -95,9 +105,14 @@ export default function DepositPage() {
 
   return (
     <div className="slide-in">
-    <div className="mb-6">
-      <h1 className="text-2xl font-bold text-white">Deposit Funds</h1>
-      <p className="text-gray-400">Instantly add funds to your Deriv account via M-Pesa</p>
+    <div className="mb-6 flex items-center gap-3">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg">
+            <ArrowDownLeft className="w-6 h-6 text-white" strokeWidth={2.5} />
+        </div>
+        <div>
+            <h1 className="text-2xl font-bold text-white">Deposit</h1>
+            <p className="text-gray-400">Add funds via M-Pesa</p>
+        </div>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="md:col-span-2 glass-effect rounded-xl p-6 custom-shadow">
@@ -121,48 +136,64 @@ export default function DepositPage() {
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <span className="text-gray-400 sm:text-sm">KES</span>
               </div>
-              <input type="number" id="depositAmount" value={kesAmount} onChange={handleAmountChange} required min="1" placeholder="0" className="pl-12 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
+              <input type="number" id="depositAmount" value={kesAmount} onChange={handleKesChange} required min={MIN_KES} max={MAX_KES} placeholder={`Minimum ${MIN_KES}`} className="pl-12 w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white" />
             </div>
-            <div className="text-xs text-gray-500 mt-2 flex justify-between">
-                <span>Min: {exchangeRate.toFixed(2)} KES</span>
-                <span className="font-medium text-gray-400">Rate: 1 USD ≈ {exchangeRate} KES</span>
-            </div>
-             {usdAmount > 0 && (
-                <p className="text-sm text-green-400 mt-2">You will deposit approximately <span className="font-bold">${usdAmount.toFixed(2)} USD</span>.</p>
+            
+            {parseFloat(usdAmount) > 0 && !error && (
+              <div className="mt-3 p-3 bg-green-900/50 rounded-lg border border-green-700">
+                <p className="text-sm text-green-300">
+                  You will receive: <strong className="text-xl">${usdAmount} USD</strong>
+                </p>
+              </div>
             )}
           </div>
-          {message && (
-            <div className="p-4 bg-blue-900/50 border border-blue-700 rounded-lg text-blue-300 text-sm">
-                {message}
+
+          {error && (
+            <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-300 text-sm">
+                {error}
             </div>
           )}
+
           <div>
-            <button type="submit" disabled={isLoading} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:bg-blue-800">
+            <button type="submit" disabled={isLoading || !!error || !kesAmount} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:bg-blue-800 disabled:cursor-not-allowed">
               {isLoading ? <span className="loader h-5 w-5 border-2 rounded-full"></span> : 'Deposit Now'}
             </button>
           </div>
         </form>
       </div>
-      <div className="glass-effect rounded-xl p-6 custom-shadow">
-        <h3 className="font-medium text-white mb-4">How It Works</h3>
-        <ul className="space-y-4 text-sm text-gray-300">
-          <li className="flex items-start">
-            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">1</span>
-            <span>Enter the phone number registered with M-Pesa.</span>
-          </li>
-          <li className="flex items-start">
-            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">2</span>
-            <span>Enter the amount in KES you wish to deposit (Min: {exchangeRate.toFixed(2)}).</span>
-          </li>
-          <li className="flex items-start">
-            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">3</span>
-            <span>Click 'Deposit Now' to initiate the transaction.</span>
-          </li>
-           <li className="flex items-start">
-            <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">4</span>
-            <span>You will receive a push notification on your phone. Enter your M-Pesa PIN to confirm.</span>
-          </li>
-        </ul>
+      <div className="glass-effect rounded-xl p-6 custom-shadow space-y-6">
+        <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl p-4 border border-green-700/50">
+            <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-green-200 space-y-1">
+                <p className="font-semibold">Deposit Rules</p>
+                <p>• Minimum: {MIN_KES.toLocaleString()} KES (${MIN_USD.toFixed(2)} USD)</p>
+                <p>• Maximum: {MAX_KES.toLocaleString()} KES (${MAX_USD.toLocaleString()} USD)</p>
+                <p>• Rate: {exchangeRate} KES = $1 USD</p>
+                </div>
+            </div>
+        </div>
+        <div>
+            <h3 className="font-medium text-white mb-4">How It Works</h3>
+            <ul className="space-y-4 text-sm text-gray-300">
+            <li className="flex items-start">
+                <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">1</span>
+                <span>Enter your M-Pesa number and amount in KES.</span>
+            </li>
+            <li className="flex items-start">
+                <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">2</span>
+                <span>Click 'Deposit Now' to receive an STK push.</span>
+            </li>
+            <li className="flex items-start">
+                <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">3</span>
+                <span>Enter your M-Pesa PIN on your phone to confirm.</span>
+            </li>
+            <li className="flex items-start">
+                <span className="bg-slate-700 text-blue-400 rounded-full h-6 w-6 flex-shrink-0 flex items-center justify-center mr-3 font-bold">4</span>
+                <span>Funds are credited to your Deriv account instantly!</span>
+            </li>
+            </ul>
+        </div>
       </div>
     </div>
   </div>
