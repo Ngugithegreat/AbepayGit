@@ -69,13 +69,23 @@ export async function POST(request: NextRequest) {
         });
 
         // Get current balance
-        const currentBalance = await redis.get(`balance:${pendingDeposit.derivAccount}`);
-        const newBalance = (parseFloat(currentBalance as string) || 0) + usdAmount;
+        const currentBalanceData = await redis.get(`balance:${pendingDeposit.derivAccount}`);
         
-        // Update balance
+        let currentBalance = 0;
+        if (currentBalanceData !== null && currentBalanceData !== undefined) {
+          if (typeof currentBalanceData === 'number') {
+            currentBalance = currentBalanceData;
+          } else if (typeof currentBalanceData === 'string') {
+            currentBalance = parseFloat(currentBalanceData);
+          }
+        }
+        
+        const newBalance = currentBalance + usdAmount;
+        
+        // Store as number
         await redis.set(`balance:${pendingDeposit.derivAccount}`, newBalance);
         
-        console.log(`💰 Updated balance for ${pendingDeposit.derivAccount}: $${newBalance}`);
+        console.log(`💰 Balance updated for ${pendingDeposit.derivAccount}: ${currentBalance} + ${usdAmount} = ${newBalance}`);
 
         // Store transaction history
         const transaction = {

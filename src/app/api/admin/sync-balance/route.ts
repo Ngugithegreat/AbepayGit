@@ -4,11 +4,30 @@ import { Redis } from '@upstash/redis';
 // This endpoint manually sets a user's balance (admin only)
 export async function POST(request: NextRequest) {
   try {
-    const { account, balance } = await request.json();
+    const body = await request.json();
+    const { account, balance } = body;
 
-    if (!account || balance === undefined) {
+    console.log('🔄 Sync request:', { account, balance });
+
+    if (!account) {
       return NextResponse.json(
-        { success: false, error: 'Account and balance required' },
+        { success: false, error: 'Account is required' },
+        { status: 400 }
+      );
+    }
+
+    if (balance === undefined || balance === null || balance === '') {
+      return NextResponse.json(
+        { success: false, error: 'Balance is required' },
+        { status: 400 }
+      );
+    }
+
+    const balanceValue = parseFloat(balance);
+
+    if (isNaN(balanceValue)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid balance value' },
         { status: 400 }
       );
     }
@@ -18,13 +37,16 @@ export async function POST(request: NextRequest) {
       token: process.env.UPSTASH_REDIS_REST_TOKEN!,
     });
 
-    await redis.set(`balance:${account}`, balance.toString());
+    // Store as number, not string
+    await redis.set(`balance:${account}`, balanceValue);
 
-    console.log(`✅ Manually set balance for ${account}: $${balance}`);
+    console.log(`✅ Balance set for ${account}: $${balanceValue}`);
 
     return NextResponse.json({
       success: true,
-      message: `Balance set to $${balance} for ${account}`,
+      message: `Balance set to $${balanceValue} for ${account}`,
+      account,
+      balance: balanceValue,
     });
 
   } catch (error: any) {
