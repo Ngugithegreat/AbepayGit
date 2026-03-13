@@ -22,11 +22,21 @@ export default function DepositPage() {
   const MAX_KES = MAX_USD * exchangeRate;
 
   useEffect(() => {
-    const savedRate = localStorage.getItem('deposit_rate');
-    if (savedRate) {
-      setExchangeRate(Number(savedRate));
-    }
-  }, [exchangeRate]);
+    const loadRate = async () => {
+      try {
+        const response = await fetch('/api/rates/get');
+        const data = await response.json();
+        
+        if (data.success) {
+          setExchangeRate(data.depositRate);
+        }
+      } catch (error) {
+        console.error("Failed to load rate", error);
+      }
+    };
+    
+    loadRate();
+  }, []);
 
   const handleKesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;

@@ -27,16 +27,24 @@ export default function AdminDashboard() {
       setIsAuthenticated(true);
     }
     
-    // Load rates from localStorage
-    const savedDepositRate = localStorage.getItem('deposit_rate');
-    if (savedDepositRate) {
-      setDepositRate(Number(savedDepositRate));
+    const loadRates = async () => {
+      try {
+        const response = await fetch('/api/rates/get');
+        const data = await response.json();
+        
+        if (data.success) {
+          setDepositRate(data.depositRate);
+          setWithdrawRate(data.withdrawRate);
+        }
+      } catch (error) {
+        console.error("Failed to load rates", error);
+      }
+    };
+    
+    if (isAuthenticated) {
+      loadRates();
     }
-    const savedWithdrawRate = localStorage.getItem('withdraw_rate');
-    if (savedWithdrawRate) {
-      setWithdrawRate(Number(savedWithdrawRate));
-    }
-  }, []);
+  }, [isAuthenticated]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,10 +58,27 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleUpdateRates = () => {
-    localStorage.setItem('deposit_rate', depositRate.toString());
-    localStorage.setItem('withdraw_rate', withdrawRate.toString());
-    alert('Rates updated successfully!');
+  const handleUpdateRates = async () => {
+    try {
+      const response = await fetch('/api/rates/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          depositRate,
+          withdrawRate,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('✅ Rates updated successfully!');
+      } else {
+        alert('❌ Failed to update rates: ' + data.error);
+      }
+    } catch (error) {
+      alert('❌ Error updating rates');
+    }
   };
 
   // Password prompt screen

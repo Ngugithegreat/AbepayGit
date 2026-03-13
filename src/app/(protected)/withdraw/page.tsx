@@ -14,10 +14,20 @@ export default function WithdrawPage() {
   const [exchangeRate, setExchangeRate] = useState(128); // Default rate
 
   useEffect(() => {
-    const savedRate = localStorage.getItem('withdraw_rate');
-    if (savedRate) {
-      setExchangeRate(Number(savedRate));
-    }
+    const loadRate = async () => {
+      try {
+        const response = await fetch('/api/rates/get');
+        const data = await response.json();
+        
+        if (data.success) {
+          setExchangeRate(data.withdrawRate);
+        }
+      } catch (error) {
+        console.error("Failed to load rate", error);
+      }
+    };
+    
+    loadRate();
   }, []);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,7 +69,7 @@ export default function WithdrawPage() {
             updateBalance((selectedAccount.balance || 0) - amount);
             toast({
                 title: "Withdrawal Successful",
-                description: `Successfully withdrew $${amount.toFixed(2)}.`
+                description: `Successfully withdrew $${amount.toFixed(2)}.`,
             });
             setWithdrawAmount('');
             setKesAmount(0);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPendingDeposit, removePendingDeposit } from '@/lib/pending-deposits';
 import { transferToClient } from '@/lib/deriv-api';
+import { getDepositRate } from '@/lib/exchange-rates';
 
 
 export async function POST(request: NextRequest) {
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
       const mpesaReceipt = paymentDetails.MpesaReceiptNumber || '';
 
       // Calculate USD
-      const depositRate = 130;
+      const depositRate = await getDepositRate();
       const usdAmount = parseFloat((kesAmount / depositRate).toFixed(2));
 
       console.log(`💵 ${kesAmount} KES = $${usdAmount} USD`);
