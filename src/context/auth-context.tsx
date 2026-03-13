@@ -2,7 +2,6 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 
 interface User {
   loginid: string;
@@ -13,7 +12,6 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (token: string, accounts: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -24,84 +22,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Only check auth on mount
-    const checkAuth = () => {
-      try {
-        const loginid = localStorage.getItem('deriv_loginid');
-        const userInfo = localStorage.getItem('user_info');
+    // Just read from localStorage - NO API CALLS
+    const userInfo = localStorage.getItem('user_info');
+    const loginid = localStorage.getItem('deriv_loginid');
 
-        if (loginid && userInfo) {
-          setUser(JSON.parse(userInfo));
-          console.log('✅ Session restored:', loginid);
-        } else {
-          console.log('ℹ️ No existing session');
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (userInfo && loginid) {
+      setUser(JSON.parse(userInfo));
+    }
 
-    checkAuth();
+    setIsLoading(false);
   }, []);
 
-  const login = async (token: string, accounts: string) => {
-    try {
-      console.log('🔐 Logging in...');
-
-      // Store token immediately
-      localStorage.setItem('deriv_token1', token);
-      localStorage.setItem('deriv_accounts', accounts);
-
-      // Get user info
-      const response = await fetch('/api/deriv/get-user-info', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.user) {
-        const userInfo = {
-          loginid: data.user.loginid,
-          email: data.user.email,
-          name: data.user.fullname,
-        };
-
-        // Store user info
-        localStorage.setItem('deriv_loginid', data.user.loginid);
-        localStorage.setItem('user_info', JSON.stringify(userInfo));
-
-        setUser(userInfo);
-
-        console.log('✅ Login complete:', data.user.loginid);
-      } else {
-        throw new Error(data.error || 'Login failed');
-      }
-    } catch (error) {
-      console.error('❌ Login error:', error);
-      throw error;
-    }
-  };
-
   const logout = () => {
-    console.log('👋 Logging out...');
-    
-    localStorage.removeItem('deriv_token1');
-    localStorage.removeItem('deriv_accounts');
-    localStorage.removeItem('deriv_loginid');
-    localStorage.removeItem('user_info');
-    
-    // Clear session storage too
-    sessionStorage.removeItem('auth_processed_at');
-    
+    localStorage.clear();
+    sessionStorage.clear();
     setUser(null);
+    window.location.href = '/login';
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, logout }}>
       {children}
     </AuthContext.Provider>
   );
