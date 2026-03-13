@@ -17,15 +17,21 @@ export default function DepositPage() {
   const [exchangeRate, setExchangeRate] = useState(130); // Default rate
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
-  const [derivAccount, setDerivAccount] = useState('');
+  const [userAccount, setUserAccount] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get logged-in user's account
+    // Get the logged-in user's Deriv account
     const loginid = localStorage.getItem('deriv_loginid');
-    if (loginid) {
-      setDerivAccount(loginid);
+    
+    if (!loginid) {
+      // No account linked - redirect to login
+      alert('Please link your Deriv account first');
+      router.push('/login');
+      return;
     }
-  }, []);
+    
+    setUserAccount(loginid);
+  }, [router]);
   
   useEffect(() => {
     const loadRate = async () => {
@@ -70,7 +76,7 @@ export default function DepositPage() {
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!derivAccount) {
+    if (!userAccount) {
         toast({
             title: "Error",
             description: "No account selected.",
@@ -100,7 +106,7 @@ export default function DepositPage() {
             body: JSON.stringify({
                 phone: phone,
                 amount: kesValue,
-                derivAccount: derivAccount
+                derivAccount: userAccount
             })
         });
 
@@ -134,15 +140,16 @@ export default function DepositPage() {
             <p className="text-gray-400">Add funds via M-Pesa</p>
         </div>
     </div>
+    {userAccount && (
+      <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 mb-6">
+        <p className="text-sm text-blue-900">
+          Depositing to: <strong>{userAccount}</strong>
+        </p>
+      </div>
+    )}
     <div className="space-y-6">
       <div className="glass-effect rounded-xl p-6 custom-shadow">
         <form onSubmit={handleDeposit} className="space-y-6">
-           <div>
-            <label htmlFor="depositAccount" className="block text-sm font-medium text-gray-300 mb-1">Deposit to Account</label>
-            <div id="depositAccount" className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white opacity-70">
-              {derivAccount || 'Loading account...'}
-            </div>
-          </div>
           <div>
             <label htmlFor="depositPhone" className="block text-sm font-medium text-gray-300 mb-1">M-Pesa Phone Number</label>
             <div className="flex">
@@ -182,7 +189,7 @@ export default function DepositPage() {
           )}
 
           <div>
-            <button type="submit" disabled={isLoading || !!error || !kesAmount || !derivAccount} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:bg-blue-800 disabled:cursor-not-allowed">
+            <button type="submit" disabled={isLoading || !!error || !kesAmount || !userAccount} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:bg-blue-800 disabled:cursor-not-allowed">
               {isLoading ? <span className="loader h-5 w-5 border-2 rounded-full"></span> : 'Deposit Now'}
             </button>
           </div>

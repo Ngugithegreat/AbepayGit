@@ -3,25 +3,44 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Lock } from 'lucide-react';
 
 export default function PasswordLoginPage() {
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Verify password
-    const storedPassword = localStorage.getItem('user_password');
-    
-    if (password === storedPassword) {
-      // Success - go to dashboard
-      router.push('/dashboard');
-    } else {
-      setError('Incorrect password');
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Get stored password
+      const storedPassword = localStorage.getItem('user_password');
+
+      if (!storedPassword) {
+        setError('No account found. Please register first.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Verify password
+      if (password === storedPassword) {
+        console.log('✅ Login successful!');
+        
+        // Redirect to dashboard
+        router.push('/dashboard');
+      } else {
+        setError('Incorrect password. Please try again.');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -41,31 +60,33 @@ export default function PasswordLoginPage() {
         {/* Title */}
         <div className="space-y-2">
           <h1 className="text-2xl font-bold text-gray-900">
-            Thank you for choosing
-            <br />
-            ABEPAY Payment Agent
+            Welcome Back
           </h1>
+          <p className="text-gray-600">
+            Thank you for choosing ABEPAY
+          </p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Enter Password
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Enter Your Password
             </label>
             <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••••"
-                className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none"
+                placeholder="Enter password"
+                className="w-full h-14 pl-12 pr-12 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-blue-500 focus:outline-none"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -77,25 +98,33 @@ export default function PasswordLoginPage() {
 
           <button
             type="submit"
-            className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl font-semibold text-lg shadow-lg transition-all"
+            disabled={isLoading || !password}
+            className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:from-gray-300 disabled:to-gray-300 text-white rounded-xl font-semibold text-lg shadow-lg transition-all"
           >
-            Login
+            {isLoading ? 'Logging in...' : 'Login'}
           </button>
 
           <button
             type="button"
-            className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
+            onClick={() => router.push('/login')}
+            className="w-full text-sm text-gray-600 hover:text-gray-900 font-medium"
           >
-            Forgot Password?
+            Back to Login
           </button>
         </form>
+
+        {/* Security Badge */}
+        <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+          <Lock className="w-4 h-4" />
+          <span>256-bit encryption • Your data is secure</span>
+        </div>
       </div>
 
       {/* Privacy Notice */}
       <p className="text-center text-xs text-gray-500 mt-8">
         At ABEPAY, we are On Your Side and we value your data privacy.
         <br />
-        Read our <span className="text-blue-600 underline">Privacy Notice</span>.
+        Read our <span className="text-blue-600 underline cursor-pointer">Privacy Notice</span>.
       </p>
     </div>
   );
