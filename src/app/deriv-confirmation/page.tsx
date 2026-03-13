@@ -1,52 +1,41 @@
 
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/auth-context';
 import { CheckCircle, Loader2 } from 'lucide-react';
 
-function ConfirmationContent() {
+export default function DerivConfirmationPage() {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
-  const [userDetails, setUserDetails] = useState({
-    name: '',
-    email: '',
-    account: '',
-  });
+  const [userDetails, setUserDetails] = useState<any>(null);
 
   useEffect(() => {
-    if (user) {
-      setUserDetails({
-        name: user.fullname || 'User',
-        email: user.email || '',
-        account: user.loginid || '',
-      });
+    // Get temp user info from session
+    const tempUserInfo = sessionStorage.getItem('temp_user_info');
+    
+    if (!tempUserInfo) {
+      router.push('/login');
+      return;
     }
-  }, [user]);
+
+    setUserDetails(JSON.parse(tempUserInfo));
+  }, [router]);
 
   const handleConfirm = () => {
-    // Save user details
-    localStorage.setItem('user_name', userDetails.name);
-    localStorage.setItem('user_email', userDetails.email);
-    localStorage.setItem('user_account', userDetails.account);
-    
-    // Go to create password
+    // User confirmed their details - go to create password
     router.push('/create-password');
   };
 
   const handleReject = () => {
-    // Go back to login
+    // Clear temp data and go back to login
+    sessionStorage.clear();
     router.push('/login');
   };
 
-  if (isLoading || !user) {
-     return (
-      <div className="flex h-screen w-full items-center justify-center bg-black">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-purple-500 mx-auto mb-4" />
-          <p className="text-xl text-slate-300">Fetching your Deriv details...</p>
-        </div>
+  if (!userDetails) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
   }
@@ -84,13 +73,13 @@ function ConfirmationContent() {
         <div className="space-y-4 bg-gray-900 rounded-2xl p-6">
           <div className="text-center space-y-2">
             <p className="text-2xl font-bold text-white">
-              {userDetails.name}
+              {userDetails.fullname}
             </p>
             <p className="text-gray-400 text-sm">
               {userDetails.email}
             </p>
             <p className="text-purple-400 font-mono text-lg">
-              {userDetails.account}
+              {userDetails.loginid}
             </p>
           </div>
         </div>
@@ -114,13 +103,4 @@ function ConfirmationContent() {
       </div>
     </div>
   );
-}
-
-
-export default function DerivConfirmationPage() {
-    return (
-        <Suspense>
-            <ConfirmationContent />
-        </Suspense>
-    )
 }

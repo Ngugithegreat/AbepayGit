@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
@@ -7,7 +8,6 @@ function CallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState('processing');
-  const [error, setError] = useState('');
 
   useEffect(() => {
     const processAuth = async () => {
@@ -19,9 +19,11 @@ function CallbackContent() {
           throw new Error('Missing parameters');
         }
 
-        // Store token
-        localStorage.setItem('deriv_token1', token);
-        localStorage.setItem('deriv_accounts', accounts);
+        console.log('🔐 Processing OAuth callback...');
+
+        // Store token temporarily
+        sessionStorage.setItem('temp_oauth_token', token);
+        sessionStorage.setItem('temp_oauth_accounts', accounts);
 
         // Get user info via WebSocket
         const ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=123981');
@@ -53,6 +55,7 @@ function CallbackContent() {
                 loginid: data.authorize.loginid,
                 email: data.authorize.email,
                 fullname: data.authorize.fullname,
+                balance: data.authorize.balance,
               });
             }
           };
@@ -64,32 +67,21 @@ function CallbackContent() {
           };
         });
 
-        // Store user info
-        localStorage.setItem('deriv_loginid', userInfo.loginid);
-        localStorage.setItem('user_info', JSON.stringify({
-          loginid: userInfo.loginid,
-          email: userInfo.email,
-          name: userInfo.fullname,
-        }));
+        // Store user info temporarily
+        sessionStorage.setItem('temp_user_info', JSON.stringify(userInfo));
 
-        // Save token to Redis
-        await fetch('/api/user/save-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            account: userInfo.loginid,
-            token: token,
-          }),
-        });
-
+        console.log('✅ User info fetched, redirecting to confirmation...');
         setStatus('success');
-        setTimeout(() => router.replace('/dashboard'), 1000);
 
-      } catch (err:any) {
-        console.error('Auth error:', err);
-        setError(err.message);
+        // Redirect to confirmation page
+        setTimeout(() => {
+          router.push('/deriv-confirmation');
+        }, 500);
+
+      } catch (err) {
+        console.error('❌ Auth error:', err);
         setStatus('error');
-        setTimeout(() => router.replace('/login'), 2000);
+        setTimeout(() => router.push('/login'), 2000);
       }
     };
 
@@ -102,7 +94,7 @@ function CallbackContent() {
         {status === 'processing' && (
           <>
             <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
-            <p className="text-white text-lg">Setting up your account...</p>
+            <p className="text-white text-lg">Connecting to Deriv...</p>
           </>
         )}
         {status === 'success' && (
@@ -110,7 +102,7 @@ function CallbackContent() {
             <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto">
               <span className="text-3xl">✓</span>
             </div>
-            <p className="text-white text-lg">Success! Redirecting...</p>
+            <p className="text-white text-lg">Connected! Setting up...</p>
           </>
         )}
         {status === 'error' && (
@@ -118,7 +110,7 @@ function CallbackContent() {
             <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto">
               <span className="text-3xl">✗</span>
             </div>
-            <p className="text-white text-lg">Authentication failed</p>
+            <p className="text-white text-lg">Connection failed</p>
           </>
         )}
       </div>

@@ -1,13 +1,12 @@
+
 'use client';
 
-import { useAuth } from '@/context/auth-context';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowDownLeft, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function DepositPage() {
-  const { selectedAccount } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -18,12 +17,16 @@ export default function DepositPage() {
   const [exchangeRate, setExchangeRate] = useState(130); // Default rate
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+  const [derivAccount, setDerivAccount] = useState('');
 
-  const MIN_USD = 1.00;
-  const MAX_USD = 2000.00;
-  const minKes = MIN_USD * exchangeRate;
-  const maxKes = MAX_USD * exchangeRate;
-
+  useEffect(() => {
+    // Get logged-in user's account
+    const loginid = localStorage.getItem('deriv_loginid');
+    if (loginid) {
+      setDerivAccount(loginid);
+    }
+  }, []);
+  
   useEffect(() => {
     const loadRate = async () => {
       try {
@@ -40,6 +43,11 @@ export default function DepositPage() {
     
     loadRate();
   }, []);
+
+  const MIN_USD = 1.00;
+  const MAX_USD = 2000.00;
+  const minKes = MIN_USD * exchangeRate;
+  const maxKes = MAX_USD * exchangeRate;
 
   const handleKesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -62,7 +70,7 @@ export default function DepositPage() {
 
   const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedAccount) {
+    if (!derivAccount) {
         toast({
             title: "Error",
             description: "No account selected.",
@@ -92,7 +100,7 @@ export default function DepositPage() {
             body: JSON.stringify({
                 phone: phone,
                 amount: kesValue,
-                derivAccount: selectedAccount.loginid
+                derivAccount: derivAccount
             })
         });
 
@@ -131,7 +139,9 @@ export default function DepositPage() {
         <form onSubmit={handleDeposit} className="space-y-6">
            <div>
             <label htmlFor="depositAccount" className="block text-sm font-medium text-gray-300 mb-1">Deposit to Account</label>
-            <input type="text" id="depositAccount" disabled value={selectedAccount ? `${selectedAccount.loginid} (${selectedAccount.currency})` : 'No Account Linked'} className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white disabled:opacity-70"/>
+            <div id="depositAccount" className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white opacity-70">
+              {derivAccount || 'Loading account...'}
+            </div>
           </div>
           <div>
             <label htmlFor="depositPhone" className="block text-sm font-medium text-gray-300 mb-1">M-Pesa Phone Number</label>
@@ -172,7 +182,7 @@ export default function DepositPage() {
           )}
 
           <div>
-            <button type="submit" disabled={isLoading || !!error || !kesAmount} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:bg-blue-800 disabled:cursor-not-allowed">
+            <button type="submit" disabled={isLoading || !!error || !kesAmount || !derivAccount} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 flex items-center justify-center disabled:bg-blue-800 disabled:cursor-not-allowed">
               {isLoading ? <span className="loader h-5 w-5 border-2 rounded-full"></span> : 'Deposit Now'}
             </button>
           </div>

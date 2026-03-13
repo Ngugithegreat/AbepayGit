@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Lock, Shield } from 'lucide-react';
 
@@ -13,7 +13,15 @@ export default function CreatePasswordPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Check if user came from confirmation
+    const tempUserInfo = sessionStorage.getItem('temp_user_info');
+    if (!tempUserInfo) {
+      router.push('/login');
+    }
+  }, [router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (password.length < 8) {
@@ -26,12 +34,43 @@ export default function CreatePasswordPage() {
       return;
     }
 
-    // Save password (in production, hash it first!)
-    localStorage.setItem('user_password', password);
-    localStorage.setItem('user_has_password', 'true');
-    
-    // Go to password login
-    router.push('/password-login');
+    try {
+      // Get temp data
+      const token = sessionStorage.getItem('temp_oauth_token');
+      const userInfo = JSON.parse(sessionStorage.getItem('temp_user_info') || '{}');
+
+      // Store everything permanently
+      localStorage.setItem('deriv_token1', token!);
+      localStorage.setItem('deriv_loginid', userInfo.loginid);
+      localStorage.setItem('user_info', JSON.stringify({
+        loginid: userInfo.loginid,
+        email: userInfo.email,
+        name: userInfo.fullname,
+      }));
+      localStorage.setItem('user_password', password);
+      localStorage.setItem('user_has_password', 'true');
+
+      // Save token to Redis for balance fetching
+      await fetch('/api/user/save-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          account: userInfo.loginid,
+          token: token,
+        }),
+      });
+
+      // Clear temp data
+      sessionStorage.clear();
+
+      console.log('✅ Account setup complete!');
+
+      // Go to password login
+      router.push('/password-login');
+    } catch (error) {
+      console.error('Setup error:', error);
+      setError('Failed to complete setup');
+    }
   };
 
   return (
@@ -51,13 +90,9 @@ export default function CreatePasswordPage() {
 
         {/* Title */}
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold text-white">
-            Create Password
-          </h1>
+          <h1 className="text-2xl font-bold text-white">Create Password</h1>
           <p className="text-gray-400 text-sm">
             Please create and confirm the password for your account
-            <br />
-            to continue.
           </p>
         </div>
 
