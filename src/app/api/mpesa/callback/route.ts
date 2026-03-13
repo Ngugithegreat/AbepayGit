@@ -63,12 +63,21 @@ export async function POST(request: NextRequest) {
       if (transferResult.success) {
         console.log('🎉 Transfer successful!', transferResult);
         
-        // Store transaction history
         const redis = new Redis({
           url: process.env.UPSTASH_REDIS_REST_URL!,
           token: process.env.UPSTASH_REDIS_REST_TOKEN!,
         });
 
+        // Get current balance
+        const currentBalance = await redis.get(`balance:${pendingDeposit.derivAccount}`);
+        const newBalance = (parseFloat(currentBalance as string) || 0) + usdAmount;
+        
+        // Update balance
+        await redis.set(`balance:${pendingDeposit.derivAccount}`, newBalance);
+        
+        console.log(`💰 Updated balance for ${pendingDeposit.derivAccount}: $${newBalance}`);
+
+        // Store transaction history
         const transaction = {
           id: CheckoutRequestID,
           type: 'deposit',
