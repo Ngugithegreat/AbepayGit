@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function AuthCallbackPage() {
+function CallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState('processing');
@@ -16,22 +16,20 @@ export default function AuthCallbackPage() {
         const accounts = searchParams.get('acct1');
 
         if (!token || !accounts) {
-          throw new Error('Missing auth parameters');
+          throw new Error('Missing parameters');
         }
 
-        console.log('🔐 Processing authentication...');
-
-        // Store token immediately
+        // Store token
         localStorage.setItem('deriv_token1', token);
         localStorage.setItem('deriv_accounts', accounts);
 
-        // Fetch user info from Deriv directly
+        // Get user info via WebSocket
         const ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=123981');
 
         const userInfo = await new Promise<any>((resolve, reject) => {
           const timeout = setTimeout(() => {
             ws.close();
-            reject(new Error('Connection timeout'));
+            reject(new Error('Timeout'));
           }, 10000);
 
           ws.onopen = () => {
@@ -55,14 +53,14 @@ export default function AuthCallbackPage() {
                 loginid: data.authorize.loginid,
                 email: data.authorize.email,
                 fullname: data.authorize.fullname,
-                balance: data.authorize.balance,
               });
             }
           };
 
           ws.onerror = () => {
+            clearTimeout(timeout);
             ws.close();
-            reject(new Error('WebSocket connection failed'));
+            reject(new Error('Connection failed'));
           };
         });
 
@@ -74,7 +72,7 @@ export default function AuthCallbackPage() {
           name: userInfo.fullname,
         }));
 
-        // Store token in Redis for balance API
+        // Save token to Redis
         await fetch('/api/user/save-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -84,22 +82,14 @@ export default function AuthCallbackPage() {
           }),
         });
 
-        console.log('✅ Authentication successful!');
         setStatus('success');
+        setTimeout(() => router.replace('/dashboard'), 1000);
 
-        // Redirect after short delay
-        setTimeout(() => {
-          router.replace('/dashboard');
-        }, 1000);
-
-      } catch (err: any) {
-        console.error('❌ Auth error:', err);
+      } catch (err:any) {
+        console.error('Auth error:', err);
         setError(err.message);
         setStatus('error');
-        
-        setTimeout(() => {
-          router.replace('/login');
-        }, 3000);
+        setTimeout(() => router.replace('/login'), 2000);
       }
     };
 
@@ -107,41 +97,43 @@ export default function AuthCallbackPage() {
   }, [router, searchParams]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
       <div className="text-center space-y-6">
         {status === 'processing' && (
           <>
             <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
             <p className="text-white text-lg">Setting up your account...</p>
-            <p className="text-white/60 text-sm">Please wait</p>
           </>
         )}
-
         {status === 'success' && (
           <>
             <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
+              <span className="text-3xl">✓</span>
             </div>
-            <p className="text-white text-lg font-semibold">Success!</p>
-            <p className="text-white/60 text-sm">Redirecting...</p>
+            <p className="text-white text-lg">Success! Redirecting...</p>
           </>
         )}
-
         {status === 'error' && (
           <>
             <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <span className="text-3xl">✗</span>
             </div>
-            <p className="text-white text-lg font-semibold">Authentication Failed</p>
-            <p className="text-white/60 text-sm">{error}</p>
-            <p className="text-white/40 text-xs">Redirecting to login...</p>
+            <p className="text-white text-lg">Authentication failed</p>
           </>
         )}
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+      </div>
+    }>
+      <CallbackContent />
+    </Suspense>
   );
 }
