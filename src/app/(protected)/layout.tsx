@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppLayout } from '@/components/app-layout';
@@ -16,7 +17,7 @@ export default function ProtectedLayout({
 
   useEffect(() => {
     if (!isLoading && !user) {
-      console.log('❌ Not authenticated, redirecting to login...');
+      console.log('❌ Not authenticated, redirecting to login from layout...');
       router.replace('/login');
     }
   }, [user, isLoading, router]);

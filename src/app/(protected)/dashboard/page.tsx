@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -6,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff, Loader2, RefreshCw } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, selectedAccount, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   
   const [showBalance, setShowBalance] = useState(true);
@@ -19,13 +20,13 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ totalDeposits: 0, transactionCount: 0 });
 
   const fetchBalance = useCallback(async () => {
-    if (!selectedAccount?.loginid) {
+    if (!user?.loginid) {
       return;
     }
     
     setIsBalanceLoading(true);
     try {
-      const response = await fetch(`/api/deriv/balance?account=${selectedAccount.loginid}`);
+      const response = await fetch(`/api/deriv/balance?account=${user.loginid}`);
       const data = await response.json();
 
       if (data.success) {
@@ -38,18 +39,18 @@ export default function DashboardPage() {
     } finally {
       setIsBalanceLoading(false);
     }
-  }, [selectedAccount?.loginid]);
+  }, [user?.loginid]);
 
   const handleRefresh = async () => {
     await fetchBalance();
   };
 
   useEffect(() => {
-    if (selectedAccount?.loginid) {
+    if (user?.loginid) {
       const fetchTransactions = async () => {
         setIsLoadingTransactions(true);
         try {
-          const response = await fetch(`/api/transactions?account=${selectedAccount.loginid}`);
+          const response = await fetch(`/api/transactions?account=${user.loginid}`);
           const data = await response.json();
 
           if (data.success) {
@@ -74,23 +75,47 @@ export default function DashboardPage() {
     } else {
         setIsLoadingTransactions(false);
     }
-  }, [selectedAccount]);
+  }, [user]);
   
   useEffect(() => {
-    fetchBalance();
-    const interval = setInterval(fetchBalance, 30000);
-    return () => clearInterval(interval);
-  }, [fetchBalance]);
+    if (user?.loginid) {
+      fetchBalance();
+      const interval = setInterval(fetchBalance, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user?.loginid, fetchBalance]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-900">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-500"/>
+        <p className="sr-only">Loading session...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-900">
+        <div className="text-center">
+            <p className="text-slate-400 mb-4">Please log in to continue.</p>
+            <button onClick={() => router.push('/login')} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200">
+                Go to Login
+            </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="slide-in">
         <div className="flex items-center justify-between mb-6">
             <div>
                 <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-                <p className="text-gray-400">Welcome back, {user?.fullname || 'User'}</p>
+                <p className="text-gray-400">Welcome back, {user?.name || 'User'}</p>
             </div>
             <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-400">{selectedAccount?.loginid || 'N/A'}</span>
+                <span className="text-sm text-gray-400">{user?.loginid || 'N/A'}</span>
             </div>
         </div>
 
