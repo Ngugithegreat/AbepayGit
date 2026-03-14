@@ -45,10 +45,9 @@ export default function CreatePasswordPage() {
 
       // Hash the password before storing
       const hashedPassword = await hashPassword(password);
-      localStorage.setItem('user_password', hashedPassword);
-
+      
       // Store session securely in httpOnly cookies
-      await fetch('/api/auth/set-session', {
+      const response = await fetch('/api/auth/set-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -59,14 +58,19 @@ export default function CreatePasswordPage() {
         }),
       });
 
-      // Keep non-sensitive info in localStorage for client-side access
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save session. Please try again.');
+      }
+
+      // If session is saved, store local data
+      localStorage.setItem('user_password', hashedPassword);
       localStorage.setItem('user_info', JSON.stringify({
         loginid: userInfo.loginid,
         email: userInfo.email,
         name: userInfo.fullname,
       }));
       localStorage.setItem('user_has_password', 'true');
-
 
       // Clear temp data
       sessionStorage.clear();
@@ -75,9 +79,9 @@ export default function CreatePasswordPage() {
 
       // Go to main login page
       router.push('/login');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Setup error:', error);
-      setError('Failed to complete setup. Please try again.');
+      setError(error.message || 'Failed to complete setup. Please try again.');
     } finally {
         setIsSaving(false);
     }

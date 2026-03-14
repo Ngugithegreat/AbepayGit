@@ -3,7 +3,16 @@ import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    const { token, account, email, name } = await request.json();
+    const body = await request.json();
+    const { token, account, email, name } = body;
+
+    // Validate that all required data is present
+    if (!token || !account || !email || !name) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required session data.' },
+        { status: 400 }
+      );
+    }
 
     const cookieStore = cookies();
 
@@ -24,8 +33,8 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
-    // Store non-sensitive user info in regular cookie
-    cookieStore.set('user_info', JSON.stringify({ email, name, account }), {
+    // Store non-sensitive user info in a regular cookie that client-side JS can read
+    cookieStore.set('user_info', JSON.stringify({ loginid: account, email, name }), {
       httpOnly: false, // Can be read by JavaScript
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -34,7 +43,12 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ success: false }, { status: 500 });
+
+  } catch (error: any) {
+    console.error('❌ Error in /api/auth/set-session:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'An unknown server error occurred.' },
+      { status: 500 }
+    );
   }
 }
