@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Lock, Shield } from 'lucide-react';
+import { hashPassword } from '@/lib/security';
 
 export default function CreatePasswordPage() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export default function CreatePasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     // Check if user came from confirmation
@@ -22,6 +24,7 @@ export default function CreatePasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     
     if (password.length < 8) {
       setError('Password must be at least 8 characters');
@@ -33,10 +36,15 @@ export default function CreatePasswordPage() {
       return;
     }
 
+    setIsSaving(true);
+
     try {
       // Get temp data
       const token = sessionStorage.getItem('temp_oauth_token');
       const userInfo = JSON.parse(sessionStorage.getItem('temp_user_info') || '{}');
+
+      // Hash the password before storing
+      const hashedPassword = await hashPassword(password);
 
       // Store everything permanently
       localStorage.setItem('deriv_token1', token!);
@@ -46,7 +54,7 @@ export default function CreatePasswordPage() {
         email: userInfo.email,
         name: userInfo.fullname,
       }));
-      localStorage.setItem('user_password', password);
+      localStorage.setItem('user_password', hashedPassword);
       localStorage.setItem('user_has_password', 'true');
 
       // Save token to Redis for balance fetching
@@ -68,7 +76,9 @@ export default function CreatePasswordPage() {
       router.push('/login');
     } catch (error) {
       console.error('Setup error:', error);
-      setError('Failed to complete setup');
+      setError('Failed to complete setup. Please try again.');
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -103,7 +113,7 @@ export default function CreatePasswordPage() {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
+              placeholder="Password (min 8 characters)"
               className="w-full h-14 px-4 bg-input border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-secondary focus:outline-none"
               required
             />
@@ -142,9 +152,10 @@ export default function CreatePasswordPage() {
           {/* Submit */}
           <button
             type="submit"
-            className="w-full h-14 bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary/80 text-secondary-foreground rounded-xl font-semibold text-lg shadow-xl transition-all mt-6"
+            disabled={isSaving}
+            className="w-full h-14 bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary/80 text-secondary-foreground rounded-xl font-semibold text-lg shadow-xl transition-all disabled:opacity-50"
           >
-            Finish
+            {isSaving ? <span className="loader h-5 w-5 border-2 rounded-full"></span> : 'Finish Setup'}
           </button>
         </form>
       </div>

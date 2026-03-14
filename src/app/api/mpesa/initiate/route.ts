@@ -5,48 +5,45 @@ import {
   generateMpesaPassword, 
   generateTimestamp, 
   formatPhoneNumber,
-  isValidKenyanPhone,
   MPESA_CONFIG 
 } from '@/lib/mpesa-config';
 import { storePendingDeposit } from '@/lib/pending-deposits';
+import { depositSchema as apiDepositSchema } from '@/lib/validation';
+import { depositRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phone, amount, derivAccount } = body;
+
+    // 1. Input Validation
+    const validated = apiDepositSchema.safeParse({
+        ...body,
+        amount: Number(body.amount) // ensure amount is a number
+    });
+
+    if (!validated.success) {
+      return NextResponse.json(
+        { success: false, error: validated.error.errors[0].message },
+        { status: 400 }
+      );
+    }
+    
+    const { phone, amount, derivAccount } = validated.data;
+
+    // 2. Rate Limiting
+    const identifier = derivAccount; // Rate limit by Deriv account ID
+    const { success: limitReached } = await depositRateLimit.limit(identifier);
+
+    if (!limitReached) {
+      return NextResponse.json(
+        { success: false, error: 'Too many deposit requests. Please try again in an hour.' },
+        { status: 429 }
+      );
+    }
 
     console.log('💰 Initiating M-Pesa STK Push:', { phone, amount, derivAccount });
-
-    // Validation
-    if (!phone || !amount) {
-      return NextResponse.json(
-        { success: false, error: 'Phone number and amount are required' },
-        { status: 400 }
-      );
-    }
-
-    if (!derivAccount) {
-      return NextResponse.json(
-        { success: false, error: 'Deriv account is required. Please link your account first.' },
-        { status: 400 }
-      );
-    }
-
+    
     const formattedPhone = formatPhoneNumber(phone);
-    if (!isValidKenyanPhone(formattedPhone)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid Kenyan phone number' },
-        { status: 400 }
-      );
-    }
-
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount < 1) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid amount. Minimum is KES 1' },
-        { status: 400 }
-      );
-    }
 
     const { config, error: configError } = getMpesaConfig();
     if (configError) {
@@ -76,13 +73,12 @@ export async function POST(request: NextRequest) {
     const timestamp = generateTimestamp();
     const password = generateMpesaPassword(config.SHORTCODE, config.PASSKEY, timestamp);
 
-    // CRITICAL: Include derivAccount in AccountReference
     const stkPushPayload = {
       BusinessShortCode: config.SHORTCODE,
       Password: password,
       Timestamp: timestamp,
       TransactionType: 'CustomerPayBillOnline',
-      Amount: Math.round(numAmount),
+      Amount: Math.round(amount),
       PartyA: formattedPhone,
       PartyB: config.SHORTCODE,
       PhoneNumber: formattedPhone,
@@ -110,7 +106,7 @@ export async function POST(request: NextRequest) {
         checkoutRequestID: stkData.CheckoutRequestID,
         derivAccount: derivAccount,
         phoneNumber: formattedPhone,
-        kesAmount: numAmount,
+        kesAmount: amount,
         timestamp: Date.now(),
       });
 

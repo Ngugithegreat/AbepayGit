@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { verifyPassword } from '@/lib/security';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [hasAccount, setHasAccount] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const DERIV_APP_ID = process.env.NEXT_PUBLIC_DERIV_APP_ID || '123981';
   
@@ -23,7 +25,6 @@ export default function LoginPage() {
       derivAuthUrl.searchParams.set('app_id', DERIV_APP_ID);
       derivAuthUrl.searchParams.set('redirect_uri', redirectUri);
       derivAuthUrl.searchParams.set('scope', 'read+payments+trade+trading_information');
-      derivAuthUrl.searchParams.set('prompt', 'login');
       setAuthUrl(derivAuthUrl.toString());
     }
   }, [DERIV_APP_ID]);
@@ -44,20 +45,29 @@ export default function LoginPage() {
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
     try {
-      const storedPassword = localStorage.getItem('user_password');
+      const storedHash = localStorage.getItem('user_password');
       
-      if (password === storedPassword) {
+      if (!storedHash) {
+          setError("No account found. Please register first.");
+          setIsLoading(false);
+          return;
+      }
+
+      const isValid = await verifyPassword(password, storedHash);
+      
+      if (isValid) {
         console.log('✅ Login successful!');
         router.push('/dashboard');
       } else {
-        alert('Incorrect password. Please try again.');
+        setError('Incorrect password. Please try again.');
         setIsLoading(false);
       }
     } catch (error) {
       console.error('Login error:', error);
-      alert('Login failed. Please try again.');
+      setError('Login failed. Please try again.');
       setIsLoading(false);
     }
   };
@@ -121,6 +131,10 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+              
+              {error && (
+                <p className="text-destructive text-sm text-center">{error}</p>
+              )}
 
               <button
                 type="submit"

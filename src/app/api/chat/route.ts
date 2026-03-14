@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { chatRateLimit } from '@/lib/rate-limit';
 
 const SYSTEM_PROMPT = `You are ABEPAY's helpful customer support assistant. You help users with deposits and withdrawals to/from their Deriv trading accounts via M-Pesa in Kenya.
 
@@ -44,7 +45,19 @@ Be helpful, professional, and friendly!`;
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, conversationHistory = [] } = await request.json();
+    const body = await request.json();
+    const { message, conversationHistory = [] } = body;
+    
+    // Rate Limiting
+    const ip = request.ip ?? '127.0.0.1';
+    const { success, limit, remaining, reset } = await chatRateLimit.limit(ip);
+
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many messages. Please try again later.' },
+        { status: 429 }
+      );
+    }
 
     if (!message) {
       return NextResponse.json(

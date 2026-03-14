@@ -21,31 +21,42 @@ export async function POST(request: NextRequest) {
     if (ResultCode === 0) {
       console.log('✅ M-Pesa payment successful!');
 
+      const metadata = CallbackMetadata?.Item || [];
+      const paymentDetails: any = {};
+      metadata.forEach((item: any) => {
+        paymentDetails[item.Name] = item.Value;
+      });
+
+      const mpesaReceipt = paymentDetails.MpesaReceiptNumber;
+      if (!mpesaReceipt) {
+        console.error('❌ M-Pesa receipt number not found in callback.');
+        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Internal Error' });
+      }
+
+      // 1. Duplicate Transaction Check
+      const redis = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL!,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+      });
+
+      const alreadyProcessed = await redis.get(`processed:${mpesaReceipt}`);
+      if (alreadyProcessed) {
+        console.warn('⚠️ Duplicate transaction attempt:', mpesaReceipt);
+        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Already processed' });
+      }
+
       // Get pending deposit from KV storage
       const pendingDeposit = await getPendingDeposit(CheckoutRequestID);
 
       if (!pendingDeposit) {
         console.error('❌ No pending deposit found for:', CheckoutRequestID);
-        
-        // Still return 200 to M-Pesa to avoid retries
-        return NextResponse.json(
-          { ResultCode: 0, ResultDesc: 'Received' },
-          { status: 200 }
-        );
+        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Received' });
       }
 
       console.log('📋 Found pending deposit:', pendingDeposit);
 
-      // Extract payment details
-      const metadata = CallbackMetadata?.Item || [];
-      const paymentDetails: any = {};
-      
-      metadata.forEach((item: any) => {
-        paymentDetails[item.Name] = item.Value;
-      });
-
+      // Extract amount
       const kesAmount = paymentDetails.Amount || 0;
-      const mpesaReceipt = paymentDetails.MpesaReceiptNumber || '';
 
       // Calculate USD
       const depositRate = await getDepositRate();
@@ -62,11 +73,6 @@ export async function POST(request: NextRequest) {
 
       if (transferResult.success) {
         console.log('🎉 Transfer successful!', transferResult);
-        
-        const redis = new Redis({
-          url: process.env.UPSTASH_REDIS_REST_URL!,
-          token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-        });
 
         // Store transaction history
         const transaction = {
@@ -92,17 +98,18 @@ export async function POST(request: NextRequest) {
           `user_transactions:${pendingDeposit.derivAccount}`,
           CheckoutRequestID
         );
+        
+        // 2. Mark as processed to prevent duplicates
+        await redis.set(`processed:${mpesaReceipt}`, '1', { ex: 86400 * 30 }); // 30 days expiry
 
-        console.log('💾 Transaction saved');
+        console.log('💾 Transaction saved and marked as processed');
         
         // Remove from pending
         await removePendingDeposit(CheckoutRequestID);
         
       } else {
         console.error('❌ Transfer failed:', transferResult.error);
-        
-        // Keep in pending for manual processing
-        // Admin can retry later
+        // Keep in pending for manual processing. Admin can retry later.
       }
 
       // Always return 200 to M-Pesa
