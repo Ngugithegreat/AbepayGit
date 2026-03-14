@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useAuth } from '@/context/auth-context';
 
 const formSchema = z.object({
   phone: z.string().min(9, 'Please enter a valid phone number.').max(10, 'Please enter a valid phone number.'),
@@ -17,6 +19,7 @@ const formSchema = z.object({
 export default function DepositPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useAuth();
   const [usdAmount, setUsdAmount] = useState('0.00');
   const [exchangeRate, setExchangeRate] = useState(130); // Default rate
   const [showModal, setShowModal] = useState(false);
@@ -46,14 +49,24 @@ export default function DepositPage() {
   const watchedAmount = watch('amount');
 
   useEffect(() => {
-    const loginid = localStorage.getItem('deriv_loginid');
-    if (!loginid) {
-      alert('Please link your Deriv account first');
-      router.push('/login');
-      return;
+    if (user?.loginid) {
+      setUserAccount(user.loginid);
+    } else {
+      // This part might not be strictly necessary if protected layout handles it,
+      // but it's a good safeguard.
+      const timer = setTimeout(() => {
+        if (!user) {
+            toast({
+                title: "Authentication Error",
+                description: "Please log in to access this page.",
+                variant: "destructive"
+            });
+            router.push('/login');
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
     }
-    setUserAccount(loginid);
-  }, [router]);
+  }, [user, router, toast]);
   
   useEffect(() => {
     const loadRate = async () => {

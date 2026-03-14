@@ -22,12 +22,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Just read from localStorage - NO API CALLS
-    const userInfo = localStorage.getItem('user_info');
-    const loginid = localStorage.getItem('deriv_loginid');
-
-    if (userInfo && loginid) {
-      setUser(JSON.parse(userInfo));
+    // Read from localStorage to initialize state
+    const userInfoString = localStorage.getItem('user_info');
+    
+    if (userInfoString) {
+      try {
+        const userInfo = JSON.parse(userInfoString);
+        if (userInfo && userInfo.loginid) {
+          setUser(userInfo);
+        }
+      } catch (e) {
+        console.error("Failed to parse user info from localStorage", e);
+        // Clear corrupted data
+        localStorage.removeItem('user_info');
+      }
     }
 
     setIsLoading(false);
