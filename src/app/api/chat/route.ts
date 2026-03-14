@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 
 const SYSTEM_PROMPT = `You are ABEPAY's helpful customer support assistant. You help users with deposits and withdrawals to/from their Deriv trading accounts via M-Pesa in Kenya.
