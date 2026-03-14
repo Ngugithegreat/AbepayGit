@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing required session data.' }, { status: 400 });
     }
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
 
     cookieStore.set('deriv_token', token, {
       httpOnly: true,
