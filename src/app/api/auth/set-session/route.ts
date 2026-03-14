@@ -1,31 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { token, account, email, name } = body;
 
-    // Validate that all required data is present
     if (!token || !account || !email || !name) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required session data.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Missing required session data.' }, { status: 400 });
     }
 
-    // Create a response object to attach cookies to
-    const response = NextResponse.json({ success: true });
+    const cookieStore = cookies();
 
-    // Set httpOnly cookies on the response (JavaScript can't access these!)
-    response.cookies.set('deriv_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: '/',
-    });
-
-    response.cookies.set('deriv_account', account, {
+    cookieStore.set('deriv_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -33,22 +20,25 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
-    // Store non-sensitive user info in a regular cookie that client-side JS can read
-    response.cookies.set('user_info', JSON.stringify({ loginid: account, email, name }), {
-      httpOnly: false, // Can be read by JavaScript
+    cookieStore.set('deriv_account', account, {
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 60 * 60 * 24 * 30,
       path: '/',
     });
 
-    return response;
+    cookieStore.set('user_info', JSON.stringify({ loginid: account, email, name }), {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 30,
+      path: '/',
+    });
 
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('❌ Error in /api/auth/set-session:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'An unknown server error occurred.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
