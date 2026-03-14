@@ -7,28 +7,32 @@ export function middleware(request: NextRequest) {
   // Security headers
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
-  // A basic Content Security Policy
-  // This might need to be adjusted based on your app's needs (e.g., for external images, fonts, scripts)
-  const csp = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https://picsum.photos https://images.unsplash.com https://placehold.co; connect-src 'self' wss://ws.derivws.com https://api.anthropic.com;";
-  response.headers.set(
-    'Content-Security-Policy',
-    csp.replace(/\s{2,}/g, ' ').trim()
-  );
+  response.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+
+  // CSRF protection for sensitive endpoints
+  const isSensitiveEndpoint = 
+    request.nextUrl.pathname.startsWith('/api/mpesa') ||
+    request.nextUrl.pathname.startsWith('/api/deriv') ||
+    request.nextUrl.pathname.startsWith('/api/user');
+
+  if (isSensitiveEndpoint && request.method === 'POST') {
+    // Check for custom header (CSRF protection)
+    const hasCSRFHeader = request.headers.get('x-requested-with') === 'XMLHttpRequest';
+    
+    if (!hasCSRFHeader) {
+      console.log('❌ CSRF: Missing security header');
+      // For now just log, don't block (to avoid breaking existing functionality)
+      // return NextResponse.json({ error: 'Invalid request' }, { status: 403 });
+    }
+  }
 
   return response;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

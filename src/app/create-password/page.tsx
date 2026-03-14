@@ -45,27 +45,28 @@ export default function CreatePasswordPage() {
 
       // Hash the password before storing
       const hashedPassword = await hashPassword(password);
+      localStorage.setItem('user_password', hashedPassword);
 
-      // Store everything permanently
-      localStorage.setItem('deriv_token1', token!);
-      localStorage.setItem('deriv_loginid', userInfo.loginid);
+      // Store session securely in httpOnly cookies
+      await fetch('/api/auth/set-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: token,
+          account: userInfo.loginid,
+          email: userInfo.email,
+          name: userInfo.fullname,
+        }),
+      });
+
+      // Keep non-sensitive info in localStorage for client-side access
       localStorage.setItem('user_info', JSON.stringify({
         loginid: userInfo.loginid,
         email: userInfo.email,
         name: userInfo.fullname,
       }));
-      localStorage.setItem('user_password', hashedPassword);
       localStorage.setItem('user_has_password', 'true');
 
-      // Save token to Redis for balance fetching
-      await fetch('/api/user/save-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          account: userInfo.loginid,
-          token: token,
-        }),
-      });
 
       // Clear temp data
       sessionStorage.clear();
