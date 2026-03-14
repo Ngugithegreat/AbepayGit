@@ -2,13 +2,32 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff, Loader2, RefreshCw } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, isLoading } = useAuth();
   const router = useRouter();
+  const [user, setUser] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const userInfo = localStorage.getItem('user_info');
+    const hasPassword = localStorage.getItem('user_has_password');
+    
+    if (!userInfo || hasPassword !== 'true') {
+      router.push('/login');
+      return;
+    }
+    
+    try {
+      const parsed = JSON.parse(userInfo);
+      setUser(parsed);
+    } catch {
+      router.push('/login');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [router]);
   
   const [showBalance, setShowBalance] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
