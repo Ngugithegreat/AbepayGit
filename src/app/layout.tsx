@@ -1,8 +1,10 @@
+
 'use client';
 
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/context/auth-context';
+import { Chatbot } from '@/components/chatbot';
 
 export default function RootLayout({
   children,
@@ -45,8 +47,11 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           <Toaster />
+          <Chatbot />
         </AuthProvider>
       </body>
     </html>
   );
 }
+
+    

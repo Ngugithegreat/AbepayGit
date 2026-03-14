@@ -1,10 +1,10 @@
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { Chatbot } from '@/components/chatbot';
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -15,19 +15,32 @@ const navLinks = [
   { href: '/settings', label: 'Settings' },
 ];
 
-// This is now a "dumb" component. It just renders the UI and assumes
-// it will only be shown to authenticated users.
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { isLinked, isLoading, logout } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    // This is a protected layout. If not loading and not linked, redirect to login.
+    if (!isLoading && !isLinked) {
+      router.push('/login');
+    }
+  }, [isLoading, isLinked, router]);
   
   const handleLogout = () => {
     logout();
-    // After logout, redirect to the login page.
     router.push('/login');
   };
+
+  if (isLoading || !isLinked) {
+    // Show a loading state or a blank page while redirecting
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+             <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-background">
@@ -104,7 +117,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
-      <Chatbot />
     </div>
   );
 }
+
+    
