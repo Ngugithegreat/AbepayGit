@@ -7,8 +7,6 @@ export const depositSchema = z.object({
   amount: z.coerce.number({invalid_type_error: "Please enter a valid amount"})
     .min(130, 'Minimum deposit is 130 KES')
     .max(260000, 'Maximum deposit is 260,000 KES'),
-  derivAccount: z.string()
-    .regex(/^CR\d+$/, 'Invalid Deriv account ID'),
 });
 
 export const withdrawSchema = z.object({

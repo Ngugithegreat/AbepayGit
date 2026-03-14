@@ -1,7 +1,24 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+const PROTECTED_API_ROUTES = [
+  '/api/deriv/balance',
+  '/api/transactions',
+  '/api/mpesa/initiate',
+  '/api/admin/sync-balance'
+];
+
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Check for session token on protected API routes
+  if (PROTECTED_API_ROUTES.some(route => pathname.startsWith(route))) {
+    const token = request.cookies.get('deriv_token');
+    if (!token) {
+      return NextResponse.json({ success: false, error: 'Unauthorized: No session token' }, { status: 401 });
+    }
+  }
+  
   const response = NextResponse.next();
 
   // Security headers
@@ -11,20 +28,15 @@ export function middleware(request: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
 
-  // CSRF protection for sensitive endpoints
-  const isSensitiveEndpoint = 
-    request.nextUrl.pathname.startsWith('/api/mpesa') ||
-    request.nextUrl.pathname.startsWith('/api/deriv') ||
-    request.nextUrl.pathname.startsWith('/api/user');
-
-  if (isSensitiveEndpoint && request.method === 'POST') {
-    // Check for custom header (CSRF protection)
-    const hasCSRFHeader = request.headers.get('x-requested-with') === 'XMLHttpRequest';
+  // Basic CSRF protection check for sensitive POST requests.
+  // Note: This is a basic check. For more robust protection, consider libraries like `csurf`.
+  if (pathname.startsWith('/api/') && request.method === 'POST') {
+    const origin = request.headers.get('origin') ?? request.headers.get('referer');
+    const host = request.headers.get('host');
     
-    if (!hasCSRFHeader) {
-      console.log('❌ CSRF: Missing security header');
-      // For now just log, don't block (to avoid breaking existing functionality)
-      // return NextResponse.json({ error: 'Invalid request' }, { status: 403 });
+    if (origin && host && new URL(origin).host !== host) {
+      // Uncomment the following line to enforce CSRF protection
+      // return NextResponse.json({ error: 'CSRF validation failed: Invalid origin' }, { status: 403 });
     }
   }
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -106,7 +105,6 @@ export default function DepositPage() {
             body: JSON.stringify({
                 phone: values.phone,
                 amount: values.amount,
-                derivAccount: userAccount
             })
         });
 

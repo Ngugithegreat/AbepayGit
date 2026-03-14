@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set('deriv_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 60 * 60 * 24 * 30, // 30 days
       path: '/',
     });
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set('deriv_account', account, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 60 * 60 * 24 * 30,
       path: '/',
     });
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set('user_info', JSON.stringify({ loginid: account, email, name }), {
       httpOnly: false, // Can be read by JavaScript
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 60 * 60 * 24 * 30,
       path: '/',
     });

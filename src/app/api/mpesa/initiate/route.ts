@@ -13,6 +13,11 @@ import { depositRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    const derivAccount = request.cookies.get('deriv_account')?.value;
+    if (!derivAccount) {
+      return NextResponse.json({ success: false, error: 'Unauthorized: Account not found in session' }, { status: 401 });
+    }
+
     const body = await request.json();
 
     // 1. Input Validation
@@ -28,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const { phone, amount, derivAccount } = validated.data;
+    const { phone, amount } = validated.data;
 
     // 2. Rate Limiting
     const identifier = derivAccount; // Rate limit by Deriv account ID

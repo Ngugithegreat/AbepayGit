@@ -26,7 +26,7 @@ export default function DashboardPage() {
     
     setIsBalanceLoading(true);
     try {
-      const response = await fetch(`/api/deriv/balance?account=${user.loginid}`);
+      const response = await fetch(`/api/deriv/balance`);
       const data = await response.json();
 
       if (data.success) {
@@ -50,7 +50,7 @@ export default function DashboardPage() {
       const fetchTransactions = async () => {
         setIsLoadingTransactions(true);
         try {
-          const response = await fetch(`/api/transactions?account=${user.loginid}`);
+          const response = await fetch(`/api/transactions`);
           const data = await response.json();
 
           if (data.success) {

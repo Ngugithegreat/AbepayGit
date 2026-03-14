@@ -3,13 +3,12 @@ import { Redis } from '@upstash/redis';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user's Deriv account from session
-    const derivAccount = request.nextUrl.searchParams.get('account');
+    const derivAccount = request.cookies.get('deriv_account')?.value;
 
     if (!derivAccount) {
       return NextResponse.json(
-        { success: false, error: 'Account not specified' },
-        { status: 400 }
+        { success: false, error: 'Unauthorized: Account not found in session' },
+        { status: 401 }
       );
     }
 
@@ -34,15 +33,17 @@ export async function GET(request: NextRequest) {
 
     // Fetch transaction details
     const transactions = [];
-    // Using mget for batch fetching
-    const transactionData = await redis.mget(
-      ...transactionIds.map(id => `transaction:${id}`)
-    );
+    if (transactionIds.length > 0) {
+      // Using mget for batch fetching
+      const transactionData = await redis.mget(
+        ...transactionIds.map(id => `transaction:${id}`)
+      );
 
-    for (const data of transactionData) {
-      if (data) {
-        const transaction = typeof data === 'string' ? JSON.parse(data) : data;
-        transactions.push(transaction);
+      for (const data of transactionData) {
+        if (data) {
+          const transaction = typeof data === 'string' ? JSON.parse(data) : data;
+          transactions.push(transaction);
+        }
       }
     }
     

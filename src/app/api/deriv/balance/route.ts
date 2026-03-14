@@ -3,30 +3,22 @@ import { Redis } from '@upstash/redis';
 
 export async function GET(request: NextRequest) {
   try {
-    const account = request.nextUrl.searchParams.get('account');
-    
+    const account = request.cookies.get('deriv_account')?.value;
+    const userToken = request.cookies.get('deriv_token')?.value;
+
     console.log('💰 Fetching REAL balance for:', account);
     
     if (!account) {
       return NextResponse.json(
-        { success: false, error: 'Account not specified' },
-        { status: 400 }
+        { success: false, error: 'Unauthorized: Account not found in session' },
+        { status: 401 }
       );
     }
-
-    const redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-    });
-
-    // Get user's API token
-    const userToken = await redis.get(`user_token:${account}`);
-
+    
     if (!userToken) {
-      console.error('❌ No API token found for:', account);
       return NextResponse.json(
         { success: false, error: 'User token not found. Please re-link account.' },
-        { status: 404 }
+        { status: 401 }
       );
     }
 

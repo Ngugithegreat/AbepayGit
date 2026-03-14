@@ -26,8 +26,9 @@ export default function CreatePasswordPage() {
     e.preventDefault();
     setError('');
     
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      setError('Password must be 8+ characters, with an uppercase letter, a number, and a special character.');
       return;
     }
     
@@ -58,9 +59,9 @@ export default function CreatePasswordPage() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save session. Please try again.');
+      const sessionData = await response.json();
+      if (!response.ok || !sessionData.success) {
+        throw new Error(sessionData.error || 'Failed to save session. Please try again.');
       }
 
       // If session is saved, store local data
@@ -106,7 +107,7 @@ export default function CreatePasswordPage() {
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold text-foreground">Create Password</h1>
           <p className="text-muted-foreground text-sm">
-            Please create and confirm the password for your account
+            Choose a strong password to secure your account.
           </p>
         </div>
 
@@ -118,7 +119,7 @@ export default function CreatePasswordPage() {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password (min 8 characters)"
+              placeholder="Enter your new password"
               className="w-full h-14 px-4 bg-input border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-secondary focus:outline-none"
               required
             />
@@ -151,7 +152,7 @@ export default function CreatePasswordPage() {
           </div>
 
           {error && (
-            <p className="text-destructive text-sm text-center">{error}</p>
+            <p className="text-destructive text-sm text-center bg-destructive/10 p-3 rounded-lg">{error}</p>
           )}
 
           {/* Submit */}
