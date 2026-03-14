@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,10 +13,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const cookieStore = cookies();
+    // Create a response object to attach cookies to
+    const response = NextResponse.json({ success: true });
 
-    // Set httpOnly cookies (JavaScript can't access these!)
-    cookieStore.set('deriv_token', token, {
+    // Set httpOnly cookies on the response (JavaScript can't access these!)
+    response.cookies.set('deriv_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
-    cookieStore.set('deriv_account', account, {
+    response.cookies.set('deriv_account', account, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Store non-sensitive user info in a regular cookie that client-side JS can read
-    cookieStore.set('user_info', JSON.stringify({ loginid: account, email, name }), {
+    response.cookies.set('user_info', JSON.stringify({ loginid: account, email, name }), {
       httpOnly: false, // Can be read by JavaScript
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
-    return NextResponse.json({ success: true });
+    return response;
 
   } catch (error: any) {
     console.error('❌ Error in /api/auth/set-session:', error);
