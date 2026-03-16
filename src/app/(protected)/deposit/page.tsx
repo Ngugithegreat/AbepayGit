@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,12 +8,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/context/auth-context';
-
-const formSchema = z.object({
-  phone: z.string().min(9, 'Please enter a valid phone number.').max(10, 'Please enter a valid phone number.'),
-  amount: z.coerce.number({invalid_type_error: "Please enter a valid amount."}).positive(),
-});
-
 
 export default function DepositPage() {
   const { toast } = useToast();
@@ -28,17 +21,25 @@ export default function DepositPage() {
 
   const MIN_USD = 1.00;
   const MAX_USD = 2000.00;
+  
+  // These are now recalculated on every render, capturing the latest exchangeRate
   const minKes = MIN_USD * exchangeRate;
   const maxKes = MAX_USD * exchangeRate;
 
+  // The form schema is now defined inside the component, so it uses the latest minKes/maxKes values for validation.
+  const formSchema = z.object({
+    phone: z.string().min(9, 'Please enter a valid phone number.').max(10, 'Please enter a valid phone number.'),
+    amount: z.coerce.number({invalid_type_error: "Please enter a valid amount."}).positive(),
+  }).refine(data => data.amount >= minKes, {
+    message: `Minimum deposit is ${minKes.toLocaleString()} KES ($${MIN_USD.toFixed(2)} USD)`,
+    path: ['amount'],
+  }).refine(data => data.amount <= maxKes, {
+    message: `Maximum deposit is ${maxKes.toLocaleString()} KES ($${MAX_USD.toLocaleString()} USD)`,
+    path: ['amount'],
+  });
+
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema.refine(data => data.amount >= minKes, {
-      message: `Minimum deposit is ${minKes.toLocaleString()} KES ($${MIN_USD.toFixed(2)} USD)`,
-      path: ['amount'],
-    }).refine(data => data.amount <= maxKes, {
-      message: `Maximum deposit is ${maxKes.toLocaleString()} KES ($${MAX_USD.toLocaleString()} USD)`,
-      path: ['amount'],
-    })),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       phone: '',
       amount: undefined,
@@ -246,5 +247,3 @@ export default function DepositPage() {
   </div>
   );
 }
-
-    

@@ -15,8 +15,19 @@ export default function WelcomeBackPage() {
     if (userInfo) {
       try {
         const user = JSON.parse(userInfo);
-        const name = user.name || '';
-        setFirstName(name.split(' ')[0]);
+        const fullName = user.name || '';
+        const nameParts = fullName.split(' ');
+        
+        // List of common salutations to filter out
+        const salutations = ['Mr', 'Mrs', 'Ms', 'Dr', 'Mr.', 'Mrs.', 'Ms.', 'Dr.'];
+        let parsedFirstName = nameParts[0];
+
+        // If the first part is a salutation and there's another part, use the next part
+        if (salutations.includes(parsedFirstName) && nameParts.length > 1) {
+            parsedFirstName = nameParts[1];
+        }
+        
+        setFirstName(parsedFirstName);
       } catch (e) {
         console.error("Failed to parse user info", e);
         router.push('/login');

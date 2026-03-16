@@ -30,7 +30,7 @@ export default function ProfilePage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="fullName" className="block text-sm font-medium text-muted-foreground mb-1">Full Name</label>
-                <input type="text" id="fullName" required defaultValue={user?.fullname} className="w-full p-3 bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground" />
+                <input type="text" id="fullName" required defaultValue={user?.name} className="w-full p-3 bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground" />
               </div>
               <div>
                 <label htmlFor="profileEmail" className="block text-sm font-medium text-muted-foreground mb-1">Email Address</label>
