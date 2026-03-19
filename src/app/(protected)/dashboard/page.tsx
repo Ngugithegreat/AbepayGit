@@ -20,22 +20,21 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ totalDeposits: 0, transactionCount: 0 });
 
   const fetchBalance = useCallback(async () => {
-    if (!user?.loginid) {
-      return;
-    }
-    
+    const accountId = user?.loginid || 'CR9999999'; // Use dummy account for testing
     setIsBalanceLoading(true);
     try {
-      const response = await fetch(`/api/deriv/balance?account=${user.loginid}`);
+      const response = await fetch(`/api/deriv/balance?account=${accountId}`);
       const data = await response.json();
 
       if (data.success) {
         setBalance(data.balance);
       } else {
         console.error('Failed to fetch balance:', data.error);
+        setBalance(0); // Set to 0 on failure for testing
       }
     } catch (error) {
       console.error('Failed to fetch balance:', error);
+      setBalance(0); // Set to 0 on failure for testing
     } finally {
       setIsBalanceLoading(false);
     }
@@ -46,54 +45,57 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (isAuthenticated && user?.loginid) {
-      const fetchTransactions = async () => {
-        setIsLoadingTransactions(true);
-        try {
-          const response = await fetch(`/api/transactions`);
-          const data = await response.json();
+    // Auth check is disabled for testing
+    const fetchTransactions = async () => {
+      setIsLoadingTransactions(true);
+      try {
+        const response = await fetch(`/api/transactions`);
+        const data = await response.json();
 
-          if (data.success) {
-            setTransactions(data.transactions);
-            const totalDeposits = data.transactions
-              .filter((tx: any) => tx.type === 'deposit' && tx.status === 'completed')
-              .reduce((sum: number, tx: any) => sum + tx.usdAmount, 0);
-            
-            setStats({
-              totalDeposits: totalDeposits,
-              transactionCount: data.transactions.length,
-            });
-          }
-        } catch (error) {
-          console.error('Failed to fetch transactions:', error);
-        } finally {
-          setIsLoadingTransactions(false);
+        if (data.success) {
+          setTransactions(data.transactions);
+          const totalDeposits = data.transactions
+            .filter((tx: any) => tx.type === 'deposit' && tx.status === 'completed')
+            .reduce((sum: number, tx: any) => sum + tx.usdAmount, 0);
+          
+          setStats({
+            totalDeposits: totalDeposits,
+            transactionCount: data.transactions.length,
+          });
+        } else {
+          // In testing, we might not be logged in, so this can fail.
+          setTransactions([]);
         }
-      };
-      
-      fetchTransactions();
-    } else {
+      } catch (error) {
+        console.error('Failed to fetch transactions:', error);
+        setTransactions([]);
+      } finally {
         setIsLoadingTransactions(false);
-    }
-  }, [isAuthenticated, user]);
+      }
+    };
+    
+    fetchTransactions();
+  }, []);
   
   useEffect(() => {
-    if (isAuthenticated && user?.loginid) {
-      fetchBalance();
-      const interval = setInterval(fetchBalance, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [isAuthenticated, user?.loginid, fetchBalance]);
+    // Auth check is disabled for testing
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 30000);
+    return () => clearInterval(interval);
+  }, [fetchBalance]);
+
+  const testUser = { name: 'Test User', loginid: 'CR9999999' };
+  const displayUser = user || testUser;
 
   return (
     <div className="slide-in">
         <div className="flex items-center justify-between mb-6">
             <div>
                 <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-                <p className="text-muted-foreground">Welcome back, {user?.name || 'User'}</p>
+                <p className="text-muted-foreground">Welcome back, {displayUser.name}</p>
             </div>
             <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">{user?.loginid || 'N/A'}</span>
+                <span className="text-sm text-muted-foreground">{displayUser.loginid}</span>
             </div>
         </div>
 

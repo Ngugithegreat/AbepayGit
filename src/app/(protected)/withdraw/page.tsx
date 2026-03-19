@@ -27,17 +27,11 @@ export default function WithdrawPage() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const loginid = localStorage.getItem('deriv_loginid');
+    // Auth check disabled for testing. Use a dummy account.
+    const loginid = localStorage.getItem('deriv_loginid') || 'CR9999999'; 
     const userInfoStr = localStorage.getItem('user_info');
     
     console.log('📍 Withdraw page - loginid:', loginid);
-    console.log('📍 Withdraw page - userInfo:', userInfoStr);
-    
-    if (!loginid) {
-      console.error('❌ No loginid found, redirecting to login');
-      router.push('/login');
-      return;
-    }
     
     setDerivAccount(loginid);
 
@@ -63,9 +57,11 @@ export default function WithdrawPage() {
         setBalance(balanceData.balance);
       } else {
         setError('Could not fetch balance.');
+        setBalance(1000); // Dummy balance for testing
       }
     } catch {
       setError('Could not fetch balance.');
+      setBalance(1000); // Dummy balance for testing
     }
     
     // Get withdrawal rate

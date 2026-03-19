@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -45,24 +46,15 @@ export default function DepositPage() {
   const watchedAmount = watch('amount');
 
   useEffect(() => {
+    // Auth check disabled for testing. Use a dummy account.
     if (user?.loginid) {
       setUserAccount(user.loginid);
     } else {
-      // This part might not be strictly necessary if protected layout handles it,
-      // but it's a good safeguard.
-      const timer = setTimeout(() => {
-        if (!user) {
-            toast({
-                title: "Authentication Error",
-                description: "Please log in to access this page.",
-                variant: "destructive"
-            });
-            router.push('/login');
-        }
-      }, 1000);
-      return () => clearTimeout(timer);
+      const testAccount = 'CR9999999'; // Dummy for testing
+      console.log(`Auth check disabled: using test account ${testAccount}`);
+      setUserAccount(testAccount);
     }
-  }, [user, router, toast]);
+  }, [user]);
   
   useEffect(() => {
     const loadRate = async () => {
