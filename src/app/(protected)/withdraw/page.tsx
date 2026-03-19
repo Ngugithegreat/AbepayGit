@@ -1,14 +1,13 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowUpRight, Phone, DollarSign, AlertCircle, Loader2 } from 'lucide-react';
-import { useAuth } from '@/context/auth-context';
+import { ArrowLeft, Phone, DollarSign, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function WithdrawPage() {
   const router = useRouter();
-  const { user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
   
   const [step, setStep] = useState<'amount' | 'phone' | 'verify'>('amount');
@@ -20,46 +19,68 @@ export default function WithdrawPage() {
   const [rate, setRate] = useState(124);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [derivAccount, setDerivAccount] = useState('');
 
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      if (isAuthLoading || !user) return;
+    loadData();
+  }, []);
 
-      // Get M-Pesa phone
-      const savedPhone = localStorage.getItem('mpesa_phone');
-      if (savedPhone) {
-        setMpesaPhone(savedPhone);
+  const loadData = async () => {
+    setIsLoading(true);
+    const loginid = localStorage.getItem('deriv_loginid');
+    const userInfoStr = localStorage.getItem('user_info');
+    
+    console.log('📍 Withdraw page - loginid:', loginid);
+    console.log('📍 Withdraw page - userInfo:', userInfoStr);
+    
+    if (!loginid) {
+      console.error('❌ No loginid found, redirecting to login');
+      router.push('/login');
+      return;
+    }
+    
+    setDerivAccount(loginid);
+
+    // Get M-Pesa phone
+    const savedPhone = localStorage.getItem('mpesa_phone');
+    if (savedPhone) {
+      setMpesaPhone(savedPhone);
+    } else {
+      // Try to get from Redis
+      const phoneRes = await fetch(`/api/user/get-mpesa?account=${loginid}`);
+      const phoneData = await phoneRes.json();
+      if (phoneData.success && phoneData.phone) {
+        setMpesaPhone(phoneData.phone);
+        localStorage.setItem('mpesa_phone', phoneData.phone);
       }
+    }
 
-      // Get balance
-      try {
-        const balanceRes = await fetch('/api/deriv/balance');
-        const balanceData = await balanceRes.json();
-        if (balanceData.success) {
-          setBalance(balanceData.balance);
-        } else {
-          setError('Could not fetch balance.');
-        }
-      } catch {
+    // Get balance
+    try {
+      const balanceRes = await fetch(`/api/deriv/balance?account=${loginid}`);
+      const balanceData = await balanceRes.json();
+      if (balanceData.success) {
+        setBalance(balanceData.balance);
+      } else {
         setError('Could not fetch balance.');
       }
-      
-      // Get withdrawal rate
-      try {
-        const rateRes = await fetch('/api/rates/get');
-        const rateData = await rateRes.json();
-        if (rateData.success) {
-          setRate(rateData.withdrawRate);
-        }
-      } catch {
-        // Use default rate
+    } catch {
+      setError('Could not fetch balance.');
+    }
+    
+    // Get withdrawal rate
+    try {
+      const rateRes = await fetch('/api/rates/get');
+      const rateData = await rateRes.json();
+      if (rateData.success) {
+        setRate(rateData.withdrawRate);
       }
-      setIsLoading(false);
-    };
+    } catch {
+      // Use default rate
+    }
+    setIsLoading(false);
+  };
 
-    loadData();
-  }, [user, isAuthLoading]);
 
   const handleAmountChange = (value: string) => {
     setUsdAmount(value);
@@ -105,6 +126,7 @@ export default function WithdrawPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: parseFloat(usdAmount),
+          account: derivAccount,
         }),
       });
 
@@ -143,6 +165,7 @@ export default function WithdrawPage() {
           kesAmount: kesAmount,
           phone: mpesaPhone,
           verificationCode: verificationCode,
+          account: derivAccount,
         }),
       });
 

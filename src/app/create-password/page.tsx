@@ -4,7 +4,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Lock, Shield } from 'lucide-react';
-import { hashPassword } from '@/lib/security';
+
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 export default function CreatePasswordPage() {
   const router = useRouter();
@@ -44,42 +52,52 @@ export default function CreatePasswordPage() {
     try {
       // Get temp data
       const token = sessionStorage.getItem('temp_oauth_token');
-      const userInfo = JSON.parse(sessionStorage.getItem('temp_user_info') || '{}');
+      const accounts = sessionStorage.getItem('temp_oauth_accounts');
+      const userInfoStr = sessionStorage.getItem('temp_user_info');
       const mpesaPhone = sessionStorage.getItem('temp_mpesa_phone');
 
-      // Hash the password before storing
-      const hashedPassword = await hashPassword(password);
-      
-      // Store session securely in httpOnly cookies
-      const response = await fetch('/api/auth/set-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: token,
-          account: userInfo.loginid,
-          email: userInfo.email,
-          name: userInfo.fullname,
-        }),
-      });
-
-      const sessionData = await response.json();
-      if (!response.ok || !sessionData.success) {
-        throw new Error(sessionData.error || 'Failed to save session. Please try again.');
+      if (!token || !userInfoStr) {
+        throw new Error('Missing session data. Please start the login process again.');
       }
 
-      // If session is saved, store local data
-      localStorage.setItem('user_password', hashedPassword);
+      const userInfo = JSON.parse(userInfoStr);
+
+      console.log('💾 Saving user data:', userInfo);
+
+      // Hash password
+      const hashedPassword = await hashPassword(password);
+
+      // Store EVERYTHING in localStorage
+      localStorage.setItem('deriv_token1', token);
+      localStorage.setItem('deriv_accounts', accounts || '');
+      localStorage.setItem('deriv_loginid', userInfo.loginid);
       localStorage.setItem('user_info', JSON.stringify({
         loginid: userInfo.loginid,
         email: userInfo.email,
         name: userInfo.fullname,
+        fullname: userInfo.fullname,
       }));
+      localStorage.setItem('user_password', hashedPassword);
       localStorage.setItem('user_has_password', 'true');
       
       if (mpesaPhone) {
         localStorage.setItem('mpesa_phone', mpesaPhone);
+      }
 
-        // Also store in Redis for server-side access
+      console.log('✅ User data saved to localStorage');
+
+      // Save token to Redis for balance API
+      await fetch('/api/user/save-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          account: userInfo.loginid,
+          token: token,
+        }),
+      });
+
+      // Save M-Pesa phone to Redis
+      if (mpesaPhone) {
         await fetch('/api/user/save-mpesa', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -95,11 +113,11 @@ export default function CreatePasswordPage() {
 
       console.log('✅ Account setup complete!');
 
-      // Go to main login page
+      // Go to login page
       router.push('/login');
     } catch (error: any) {
       console.error('Setup error:', error);
-      setError(error.message || 'Failed to complete setup. Please try again.');
+      setError(error.message || 'Failed to complete setup');
     } finally {
         setIsSaving(false);
     }

@@ -3,20 +3,27 @@ import { Redis } from '@upstash/redis';
 
 export async function POST(request: NextRequest) {
   try {
-    const userToken = request.cookies.get('deriv_token')?.value;
-    const derivAccount = request.cookies.get('deriv_account')?.value;
+    const { amount, kesAmount, phone, verificationCode, account } = await request.json();
 
-    if (!userToken || !derivAccount) {
-      return NextResponse.json({ success: false, error: 'Unauthorized: Missing session data' }, { status: 401 });
+    if (!account) {
+       return NextResponse.json({ success: false, error: 'Unauthorized: Missing account data' }, { status: 401 });
     }
-
-    const { amount, kesAmount, phone, verificationCode } = await request.json();
-
-    if (!amount || !kesAmount || !phone || !verificationCode) {
+     if (!amount || !kesAmount || !phone || !verificationCode) {
       return NextResponse.json({ success: false, error: 'Missing required withdrawal data' }, { status: 400 });
     }
 
-    console.log('💸 Processing withdrawal:', { derivAccount, amount, kesAmount, phone });
+    // Fetch token from Redis
+    const redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    });
+    const userToken = await redis.get<string>(`user_token:${account}`);
+
+    if (!userToken) {
+      return NextResponse.json({ success: false, error: 'Unauthorized: Missing token' }, { status: 401 });
+    }
+
+    console.log('💸 Processing withdrawal:', { account, amount, kesAmount, phone });
 
     // Step 1: Verify code with Deriv and deduct balance
     const { WebSocket } = await import('ws');
@@ -94,7 +101,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         phone: phone,
         amount: kesAmount,
-        account: derivAccount,
+        account: account,
       }),
     });
 
@@ -103,12 +110,8 @@ export async function POST(request: NextRequest) {
     if (!b2cData.success) {
       console.error('❌ M-Pesa B2C failed:', b2cData.error);
       
-      const redis = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL!,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-      });
       await redis.set(`failed_withdrawal:${Date.now()}`, JSON.stringify({
-        account: derivAccount,
+        account: account,
         amount,
         kesAmount,
         phone,
@@ -124,11 +127,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 3: Record the transaction in Redis
-    const redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-    });
-
     const transactionId = `WTH-${Date.now()}`;
     const transaction = {
       id: transactionId,
@@ -136,7 +134,7 @@ export async function POST(request: NextRequest) {
       kesAmount,
       usdAmount: amount,
       mpesaReceipt: b2cData.conversationId, 
-      derivAccount: derivAccount,
+      derivAccount: account,
       phoneNumber: phone,
       transactionId: derivResult.transaction_id,
       timestamp: Date.now(),
@@ -144,7 +142,7 @@ export async function POST(request: NextRequest) {
     };
 
     await redis.set(`transaction:${transactionId}`, JSON.stringify(transaction));
-    await redis.lpush(`user_transactions:${derivAccount}`, transactionId);
+    await redis.lpush(`user_transactions:${account}`, transactionId);
 
     console.log('💾 Withdrawal transaction saved:', transactionId);
     console.log('✅ Withdrawal complete!');

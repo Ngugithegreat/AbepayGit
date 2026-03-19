@@ -45,7 +45,7 @@ export default function DashboardPage() {
     
     setIsBalanceLoading(true);
     try {
-      const response = await fetch(`/api/deriv/balance`);
+      const response = await fetch(`/api/deriv/balance?account=${user.loginid}`);
       const data = await response.json();
 
       if (data.success) {
@@ -271,5 +271,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

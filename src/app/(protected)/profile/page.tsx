@@ -1,18 +1,45 @@
 'use client';
 
-import { useAuth } from '@/context/auth-context';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [userInfo, setUserInfo] = useState({
+    name: '',
+    email: '',
+    loginid: '',
+    mpesaPhone: '',
+  });
+
+  useEffect(() => {
+    const loadUserInfo = () => {
+      const userInfoStr = localStorage.getItem('user_info');
+      const loginid = localStorage.getItem('deriv_loginid');
+      const mpesaPhone = localStorage.getItem('mpesa_phone');
+
+      console.log('👤 Profile - userInfo:', userInfoStr);
+      console.log('👤 Profile - loginid:', loginid);
+
+      if (userInfoStr) {
+        const info = JSON.parse(userInfoStr);
+        setUserInfo({
+          name: info.fullname || info.name || '',
+          email: info.email || '',
+          loginid: info.loginid || loginid || '',
+          mpesaPhone: mpesaPhone || '',
+        });
+      }
+    };
+
+    loadUserInfo();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    // Simulate API call
+    // This is a dummy save, as the fields are not editable in this version.
     setTimeout(() => {
         toast({ title: "Profile Updated", description: "Your changes have been saved." });
         setIsSaving(false);
@@ -27,25 +54,24 @@ export default function ProfilePage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 glass-effect rounded-xl p-6 custom-shadow">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-6">
               <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-muted-foreground mb-1">Full Name</label>
-                <input type="text" id="fullName" required defaultValue={user?.name} className="w-full p-3 bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground" />
-              </div>
-              <div>
-                <label htmlFor="profileEmail" className="block text-sm font-medium text-muted-foreground mb-1">Email Address</label>
-                <input type="email" id="profileEmail" required defaultValue={user?.email} className="w-full p-3 bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground" />
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Full Name</label>
+                <p className="w-full p-3 bg-input border border-border rounded-lg text-foreground">{userInfo.name || 'Not set'}</p>
               </div>
               <div>
-                <label htmlFor="derivAccount" className="block text-sm font-medium text-muted-foreground mb-1">Deriv Account ID</label>
-                <input type="text" id="derivAccount" required disabled defaultValue={user?.loginid} className="w-full p-3 bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground disabled:opacity-70" />
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Email Address</label>
+                <p className="w-full p-3 bg-input border border-border rounded-lg text-foreground">{userInfo.email || 'Not set'}</p>
               </div>
-              <div className="pt-4 border-t border-border">
-                <button type="submit" disabled={isSaving} className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg transition duration-200 disabled:opacity-50">
-                  {isSaving ? <span className="loader h-5 w-5 border-2 rounded-full"></span> : 'Save Changes'}
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Deriv Account ID</label>
+                <p className="w-full p-3 bg-input border border-border rounded-lg text-foreground">{userInfo.loginid || 'Not set'}</p>
               </div>
-            </form>
+               <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">M-Pesa Phone</label>
+                <p className="w-full p-3 bg-input border border-border rounded-lg text-foreground">{userInfo.mpesaPhone || 'Not set'}</p>
+              </div>
+            </div>
           </div>
           <div className="space-y-6">
             <div className="glass-effect rounded-xl p-6 custom-shadow">
