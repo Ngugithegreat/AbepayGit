@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -46,8 +47,12 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+
+    // Use a short delay to allow UI to update
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     try {
+      console.log('🔐 Attempting login...');
       const storedHash = localStorage.getItem('user_password');
       
       if (!storedHash) {
@@ -56,12 +61,15 @@ export default function LoginPage() {
           return;
       }
 
+      console.log('🔑 Comparing passwords...');
       const isValid = await verifyPassword(password, storedHash);
       
       if (isValid) {
-        console.log('✅ Login successful!');
-        router.push('/dashboard');
+        console.log('✅ Login successful! Redirecting...');
+        // Use window.location.href for a full page refresh to ensure all states are reset
+        window.location.href = '/dashboard';
       } else {
+        console.log('❌ Password incorrect');
         setError('Incorrect password. Please try again.');
         setIsLoading(false);
       }
