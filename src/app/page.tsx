@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -7,23 +8,22 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      // Show splash for 2 seconds
+    const redirect = async () => {
+      // Small delay for splash effect
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Check if user has an account
       const hasPassword = localStorage.getItem('user_has_password');
       
       if (hasPassword === 'true') {
-        // Returning user - show welcome back
-        router.push('/welcome-back');
+        // Has account - go to welcome back
+        router.replace('/welcome-back');
       } else {
         // New user - go to login
-        router.push('/login');
+        router.replace('/login');
       }
     };
 
-    checkAuth();
+    redirect();
   }, [router]);
 
   return (

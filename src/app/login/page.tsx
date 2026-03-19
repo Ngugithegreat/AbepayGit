@@ -66,8 +66,8 @@ export default function LoginPage() {
       
       if (isValid) {
         console.log('✅ Login successful! Redirecting...');
-        // Use window.location.href for a full page refresh to ensure all states are reset
-        window.location.href = '/dashboard';
+        // Use replace instead of push to avoid back button issues
+        router.replace('/dashboard');
       } else {
         console.log('❌ Password incorrect');
         setError('Incorrect password. Please try again.');

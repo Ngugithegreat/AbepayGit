@@ -8,27 +8,38 @@ import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff, Loader2,
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Auth check - FIRST thing that runs
   useEffect(() => {
-    const userInfo = localStorage.getItem('user_info');
-    const hasPassword = localStorage.getItem('user_has_password');
-    
-    if (!userInfo || hasPassword !== 'true') {
-      router.push('/login');
-      return;
-    }
-    
-    try {
-      const parsed = JSON.parse(userInfo);
-      setUser(parsed);
-    } catch {
-      router.push('/login');
-    } finally {
-      setIsLoading(false);
-    }
+    const checkAuth = () => {
+      console.log('🔍 Dashboard: Checking auth...');
+      
+      const loginid = localStorage.getItem('deriv_loginid');
+      const hasPassword = localStorage.getItem('user_has_password');
+      
+      console.log('🔍 Dashboard: loginid:', loginid);
+      console.log('🔍 Dashboard: hasPassword:', hasPassword);
+      
+      if (loginid && hasPassword === 'true') {
+        console.log('✅ Dashboard: Authenticated!');
+        const userInfo = localStorage.getItem('user_info');
+        if (userInfo) {
+            setUser(JSON.parse(userInfo));
+        }
+        setIsAuthenticated(true);
+      } else {
+        console.log('❌ Dashboard: Not authenticated, redirecting...');
+        router.replace('/login');
+      }
+      
+      setIsCheckingAuth(false);
+    };
+
+    checkAuth();
   }, [router]);
-  
+
   const [showBalance, setShowBalance] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
@@ -65,7 +76,7 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (user?.loginid) {
+    if (isAuthenticated && user?.loginid) {
       const fetchTransactions = async () => {
         setIsLoadingTransactions(true);
         try {
@@ -94,17 +105,18 @@ export default function DashboardPage() {
     } else {
         setIsLoadingTransactions(false);
     }
-  }, [user]);
+  }, [isAuthenticated, user]);
   
   useEffect(() => {
-    if (user?.loginid) {
+    if (isAuthenticated && user?.loginid) {
       fetchBalance();
       const interval = setInterval(fetchBalance, 30000);
       return () => clearInterval(interval);
     }
-  }, [user?.loginid, fetchBalance]);
+  }, [isAuthenticated, user?.loginid, fetchBalance]);
 
-  if (isLoading) {
+  // Show loading while checking
+  if (isCheckingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -115,20 +127,9 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">Please log in to continue</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg"
-          >
-            Go to Login
-          </button>
-        </div>
-      </div>
-    );
+  // Show nothing if not authenticated (while redirecting)
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (
@@ -167,7 +168,7 @@ export default function DashboardPage() {
             </div>
             
             <div className="space-y-1">
-              {(isLoading || (isBalanceLoading && balance === null)) ? (
+              {(isBalanceLoading && balance === null) ? (
                 <div className="h-12 bg-white/20 rounded-lg animate-pulse" />
               ) : (
                 <h2 className="text-5xl font-black text-primary-foreground">
