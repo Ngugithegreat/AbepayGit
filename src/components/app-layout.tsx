@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
@@ -18,26 +17,11 @@ const navLinks = [
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { isAuthenticated, isLoading, logout } = useAuth();
-  const router = useRouter();
-
-  // useEffect(() => {
-  //   if (!isLoading && !isAuthenticated) {
-  //     router.replace('/login');
-  //   }
-  // }, [isLoading, isAuthenticated, router]);
+  const { logout } = useAuth();
   
   const handleLogout = () => {
     logout();
   };
-
-  // if (isLoading || !isAuthenticated) {
-  //   return (
-  //       <div className="flex h-screen w-full items-center justify-center bg-background">
-  //            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-  //       </div>
-  //   );
-  // }
   
   return (
     <div className="min-h-screen bg-background">

@@ -52,7 +52,6 @@ export default function LoginPage() {
     await new Promise(resolve => setTimeout(resolve, 100));
     
     try {
-      console.log('🔐 Attempting login...');
       const storedHash = localStorage.getItem('user_password');
       
       if (!storedHash) {
@@ -61,15 +60,19 @@ export default function LoginPage() {
           return;
       }
 
-      console.log('🔑 Comparing passwords...');
       const isValid = await verifyPassword(password, storedHash);
       
       if (isValid) {
-        console.log('✅ Login successful! Redirecting...');
-        // Use replace instead of push to avoid back button issues
-        router.replace('/dashboard');
+        console.log('✅ Password correct!');
+        console.log('🚀 Redirecting to dashboard...');
+        
+        // Force hard redirect (not Next.js router)
+        window.location.href = '/dashboard';
+        
+        // Prevent any further code execution
+        return;
       } else {
-        console.log('❌ Password incorrect');
+        console.log('❌ Password wrong');
         setError('Incorrect password. Please try again.');
         setIsLoading(false);
       }

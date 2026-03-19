@@ -1,69 +1,72 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff, Loader2, RefreshCw } from 'lucide-react';
-import { useAuth } from '@/context/auth-context';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
 
   const [showBalance, setShowBalance] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
-  
   const [balance, setBalance] = useState<number | null>(null);
   const [isBalanceLoading, setIsBalanceLoading] = useState(true);
-
   const [stats, setStats] = useState({ totalDeposits: 0, transactionCount: 0 });
-
-  const fetchBalance = useCallback(async () => {
-    const accountId = user?.loginid || 'CR9999999'; // Use dummy account for testing
-    setIsBalanceLoading(true);
-    try {
-      const response = await fetch(`/api/deriv/balance?account=${accountId}`);
-      const data = await response.json();
-
-      if (data.success) {
-        setBalance(data.balance);
-      } else {
-        console.error('Failed to fetch balance:', data.error);
-        setBalance(0); // Set to 0 on failure for testing
-      }
-    } catch (error) {
-      console.error('Failed to fetch balance:', error);
-      setBalance(0); // Set to 0 on failure for testing
-    } finally {
-      setIsBalanceLoading(false);
-    }
-  }, [user?.loginid]);
-
-  const handleRefresh = async () => {
-    await fetchBalance();
-  };
+  const [displayUser, setDisplayUser] = useState({ name: 'User', loginid: 'CR000000' });
 
   useEffect(() => {
-    // Auth check is disabled for testing
-    const fetchTransactions = async () => {
+    const loadData = async () => {
+      setIsBalanceLoading(true);
       setIsLoadingTransactions(true);
-      try {
-        const response = await fetch(`/api/transactions`);
-        const data = await response.json();
 
-        if (data.success) {
-          setTransactions(data.transactions);
-          const totalDeposits = data.transactions
+      const loginid = localStorage.getItem('deriv_loginid');
+      const userInfoStr = localStorage.getItem('user_info');
+      const testAccount = 'CR9999999';
+      const finalAccountId = loginid || testAccount;
+
+      if(userInfoStr) {
+          try {
+            const user = JSON.parse(userInfoStr);
+            setDisplayUser({ name: user.name || user.fullname, loginid: user.loginid || finalAccountId });
+          } catch(e) {
+            setDisplayUser({ name: 'Test User', loginid: finalAccountId });
+          }
+      } else {
+          setDisplayUser({ name: 'Test User', loginid: finalAccountId });
+      }
+
+      // Fetch balance
+      try {
+        const balanceResponse = await fetch(`/api/deriv/balance?account=${finalAccountId}`);
+        const balanceData = await balanceResponse.json();
+        if (balanceData.success) {
+          setBalance(balanceData.balance);
+        } else {
+          setBalance(0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch balance:', error);
+        setBalance(0);
+      } finally {
+        setIsBalanceLoading(false);
+      }
+
+      // Fetch transactions (using cookies set during login)
+      try {
+        const txResponse = await fetch(`/api/transactions`); 
+        const txData = await txResponse.json();
+        if (txData.success) {
+          setTransactions(txData.transactions);
+          const totalDeposits = txData.transactions
             .filter((tx: any) => tx.type === 'deposit' && tx.status === 'completed')
             .reduce((sum: number, tx: any) => sum + tx.usdAmount, 0);
           
           setStats({
             totalDeposits: totalDeposits,
-            transactionCount: data.transactions.length,
+            transactionCount: txData.transactions.length,
           });
         } else {
-          // In testing, we might not be logged in, so this can fail.
           setTransactions([]);
         }
       } catch (error) {
@@ -73,19 +76,29 @@ export default function DashboardPage() {
         setIsLoadingTransactions(false);
       }
     };
-    
-    fetchTransactions();
-  }, []);
-  
-  useEffect(() => {
-    // Auth check is disabled for testing
-    fetchBalance();
-    const interval = setInterval(fetchBalance, 30000);
-    return () => clearInterval(interval);
-  }, [fetchBalance]);
 
-  const testUser = { name: 'Test User', loginid: 'CR9999999' };
-  const displayUser = user || testUser;
+    loadData();
+  }, []);
+
+  const handleRefresh = async () => {
+    const loginid = localStorage.getItem('deriv_loginid') || 'CR9999999';
+    if (!loginid) return;
+    
+    setIsBalanceLoading(true);
+    try {
+      const response = await fetch(`/api/deriv/balance?account=${loginid}`);
+      const data = await response.json();
+      if (data.success) {
+        setBalance(data.balance);
+      } else {
+        setBalance(0);
+      }
+    } catch (error) {
+      setBalance(0);
+    } finally {
+      setIsBalanceLoading(false);
+    }
+  };
 
   return (
     <div className="slide-in">
