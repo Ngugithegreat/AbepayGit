@@ -1,6 +1,3 @@
-
-export const dynamic = 'force-dynamic';
-
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
@@ -57,7 +54,6 @@ function CallbackContent() {
                 loginid: data.authorize.loginid,
                 email: data.authorize.email,
                 fullname: data.authorize.fullname,
-                balance: data.authorize.balance,
               });
             }
           };
@@ -88,7 +84,7 @@ function CallbackContent() {
     };
 
     processAuth();
-  }, [router, searchParams]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
@@ -131,5 +127,3 @@ export default function AuthCallbackPage() {
     </Suspense>
   );
 }
-
-    
