@@ -8,7 +8,6 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useAuth } from '@/context/auth-context';
 
 // Schema without the dynamic amount validation, which will be handled manually
 const formSchema = z.object({
@@ -20,7 +19,6 @@ const formSchema = z.object({
 export default function DepositPage() {
   const { toast } = useToast();
   const router = useRouter();
-  const { user } = useAuth();
   const [usdAmount, setUsdAmount] = useState('0.00');
   const [exchangeRate, setExchangeRate] = useState(130); // Default rate
   const [showModal, setShowModal] = useState(false);
@@ -46,30 +44,30 @@ export default function DepositPage() {
   const watchedAmount = watch('amount');
 
   useEffect(() => {
-    // Auth check disabled for testing. Use a dummy account.
-    if (user?.loginid) {
-      setUserAccount(user.loginid);
-    } else {
-      const testAccount = 'CR9999999'; // Dummy for testing
-      console.log(`Auth check disabled: using test account ${testAccount}`);
-      setUserAccount(testAccount);
-    }
-  }, [user]);
-  
-  useEffect(() => {
-    const loadRate = async () => {
-      try {
-        const response = await fetch('/api/rates/get');
-        const data = await response.json();
-        if (data.success) {
-          setExchangeRate(data.depositRate);
-        }
-      } catch (error) {
-        console.error("Failed to load rate", error);
-      }
-    };
+    loadDepositData();
     loadRate();
   }, []);
+  
+  const loadDepositData = () => {
+    const loginid = localStorage.getItem('deriv_loginid');
+    if (loginid) {
+      setUserAccount(loginid);
+    } else {
+      console.log('Deposit page: No loginid found.');
+    }
+  };
+
+  const loadRate = async () => {
+    try {
+      const response = await fetch('/api/rates/get');
+      const data = await response.json();
+      if (data.success) {
+        setExchangeRate(data.depositRate);
+      }
+    } catch (error) {
+      console.error("Failed to load rate", error);
+    }
+  };
 
   useEffect(() => {
     const kes = watchedAmount || 0;
@@ -97,7 +95,7 @@ export default function DepositPage() {
     if (!userAccount) {
         toast({
             title: "Error",
-            description: "No Deriv account linked.",
+            description: "No Deriv account linked. Please log in again.",
             variant: "destructive"
         });
         return;

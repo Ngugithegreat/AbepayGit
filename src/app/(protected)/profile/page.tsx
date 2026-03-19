@@ -14,7 +14,7 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    const loadUserInfo = () => {
+    const loadProfileData = () => {
       const userInfoStr = localStorage.getItem('user_info');
       const loginid = localStorage.getItem('deriv_loginid');
       const mpesaPhone = localStorage.getItem('mpesa_phone');
@@ -23,17 +23,21 @@ export default function ProfilePage() {
       console.log('👤 Profile - loginid:', loginid);
 
       if (userInfoStr) {
-        const info = JSON.parse(userInfoStr);
-        setUserInfo({
-          name: info.fullname || info.name || '',
-          email: info.email || '',
-          loginid: info.loginid || loginid || '',
-          mpesaPhone: mpesaPhone || '',
-        });
+        try {
+          const info = JSON.parse(userInfoStr);
+          setUserInfo({
+            name: info.fullname || info.name || '',
+            email: info.email || '',
+            loginid: info.loginid || loginid || '',
+            mpesaPhone: mpesaPhone || '',
+          });
+        } catch (e) {
+          console.error("Failed to parse user info", e);
+        }
       }
     };
 
-    loadUserInfo();
+    loadProfileData();
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {

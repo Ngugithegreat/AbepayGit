@@ -22,57 +22,63 @@ export default function WithdrawPage() {
   const [derivAccount, setDerivAccount] = useState('');
 
   useEffect(() => {
-    loadData();
+    loadWithdrawData();
   }, []);
 
-  const loadData = async () => {
+  const loadWithdrawData = async () => {
     setIsLoading(true);
-    // Auth check disabled for testing. Use a dummy account.
-    const loginid = localStorage.getItem('deriv_loginid') || 'CR9999999'; 
-    const userInfoStr = localStorage.getItem('user_info');
+    const loginid = localStorage.getItem('deriv_loginid');
     
     console.log('📍 Withdraw page - loginid:', loginid);
     
-    setDerivAccount(loginid);
+    if (loginid) {
+        setDerivAccount(loginid);
 
-    // Get M-Pesa phone
-    const savedPhone = localStorage.getItem('mpesa_phone');
-    if (savedPhone) {
-      setMpesaPhone(savedPhone);
-    } else {
-      // Try to get from Redis
-      const phoneRes = await fetch(`/api/user/get-mpesa?account=${loginid}`);
-      const phoneData = await phoneRes.json();
-      if (phoneData.success && phoneData.phone) {
-        setMpesaPhone(phoneData.phone);
-        localStorage.setItem('mpesa_phone', phoneData.phone);
-      }
-    }
-
-    // Get balance
-    try {
-      const balanceRes = await fetch(`/api/deriv/balance?account=${loginid}`);
-      const balanceData = await balanceRes.json();
-      if (balanceData.success) {
-        setBalance(balanceData.balance);
-      } else {
-        setError('Could not fetch balance.');
-        setBalance(1000); // Dummy balance for testing
-      }
-    } catch {
-      setError('Could not fetch balance.');
-      setBalance(1000); // Dummy balance for testing
-    }
+        // Get M-Pesa phone
+        const savedPhone = localStorage.getItem('mpesa_phone');
+        if (savedPhone) {
+          setMpesaPhone(savedPhone);
+        } else {
+          // Try to get from Redis
+          try {
+            const phoneRes = await fetch(`/api/user/get-mpesa?account=${loginid}`);
+            const phoneData = await phoneRes.json();
+            if (phoneData.success && phoneData.phone) {
+              setMpesaPhone(phoneData.phone);
+              localStorage.setItem('mpesa_phone', phoneData.phone);
+            }
+          } catch (e) {
+            console.error('Failed to get mpesa phone', e);
+          }
+        }
     
-    // Get withdrawal rate
-    try {
-      const rateRes = await fetch('/api/rates/get');
-      const rateData = await rateRes.json();
-      if (rateData.success) {
-        setRate(rateData.withdrawRate);
-      }
-    } catch {
-      // Use default rate
+        // Get balance
+        try {
+          const balanceRes = await fetch(`/api/deriv/balance?account=${loginid}`);
+          const balanceData = await balanceRes.json();
+          if (balanceData.success) {
+            setBalance(balanceData.balance);
+          } else {
+            setError('Could not fetch balance.');
+            setBalance(0);
+          }
+        } catch {
+          setError('Could not fetch balance.');
+          setBalance(0);
+        }
+        
+        // Get withdrawal rate
+        try {
+          const rateRes = await fetch('/api/rates/get');
+          const rateData = await rateRes.json();
+          if (rateData.success) {
+            setRate(rateData.withdrawRate);
+          }
+        } catch {
+          // Use default rate
+        }
+    } else {
+        setError('No Deriv account found. Please log in again.');
     }
     setIsLoading(false);
   };

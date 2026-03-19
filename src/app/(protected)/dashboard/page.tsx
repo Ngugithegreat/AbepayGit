@@ -13,75 +13,86 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState<number | null>(null);
   const [isBalanceLoading, setIsBalanceLoading] = useState(true);
   const [stats, setStats] = useState({ totalDeposits: 0, transactionCount: 0 });
-  const [displayUser, setDisplayUser] = useState({ name: 'User', loginid: 'CR000000' });
+  const [displayUser, setDisplayUser] = useState({ name: 'User', loginid: '' });
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadDashboardData = async () => {
       setIsBalanceLoading(true);
       setIsLoadingTransactions(true);
-
-      const loginid = localStorage.getItem('deriv_loginid');
+  
+      // Get user data from localStorage
       const userInfoStr = localStorage.getItem('user_info');
-      const testAccount = 'CR9999999';
-      const finalAccountId = loginid || testAccount;
-
-      if(userInfoStr) {
-          try {
-            const user = JSON.parse(userInfoStr);
-            setDisplayUser({ name: user.name || user.fullname, loginid: user.loginid || finalAccountId });
-          } catch(e) {
-            setDisplayUser({ name: 'Test User', loginid: finalAccountId });
-          }
+      const loginid = localStorage.getItem('deriv_loginid');
+  
+      console.log('📊 Dashboard loading data...');
+      console.log('User info:', userInfoStr);
+      console.log('Login ID:', loginid);
+  
+      if (userInfoStr) {
+        try {
+          const user = JSON.parse(userInfoStr);
+          setDisplayUser({ name: user.name || user.fullname || 'User', loginid: user.loginid || loginid || '' });
+        } catch(e) {
+          setDisplayUser({ name: 'User', loginid: loginid || '' });
+        }
       } else {
-          setDisplayUser({ name: 'Test User', loginid: finalAccountId });
+        setDisplayUser({ name: 'User', loginid: loginid || '' });
       }
-
-      // Fetch balance
-      try {
-        const balanceResponse = await fetch(`/api/deriv/balance?account=${finalAccountId}`);
-        const balanceData = await balanceResponse.json();
-        if (balanceData.success) {
-          setBalance(balanceData.balance);
-        } else {
+  
+      if (loginid) {
+        // Fetch balance
+        try {
+          const balanceResponse = await fetch(`/api/deriv/balance?account=${loginid}`);
+          const balanceData = await balanceResponse.json();
+          if (balanceData.success) {
+            setBalance(balanceData.balance);
+            console.log('✅ Balance loaded:', balanceData.balance);
+          } else {
+            setBalance(0);
+          }
+        } catch (error) {
+          console.error('❌ Failed to fetch balance:', error);
           setBalance(0);
+        } finally {
+          setIsBalanceLoading(false);
         }
-      } catch (error) {
-        console.error('Failed to fetch balance:', error);
-        setBalance(0);
-      } finally {
-        setIsBalanceLoading(false);
-      }
-
-      // Fetch transactions (using cookies set during login)
-      try {
-        const txResponse = await fetch(`/api/transactions`); 
-        const txData = await txResponse.json();
-        if (txData.success) {
-          setTransactions(txData.transactions);
-          const totalDeposits = txData.transactions
-            .filter((tx: any) => tx.type === 'deposit' && tx.status === 'completed')
-            .reduce((sum: number, tx: any) => sum + tx.usdAmount, 0);
-          
-          setStats({
-            totalDeposits: totalDeposits,
-            transactionCount: txData.transactions.length,
-          });
-        } else {
+  
+        // Fetch transactions
+        try {
+          const txResponse = await fetch(`/api/transactions`); 
+          const txData = await txResponse.json();
+          if (txData.success) {
+            setTransactions(txData.transactions);
+            const totalDeposits = txData.transactions
+              .filter((tx: any) => tx.type === 'deposit' && tx.status === 'completed')
+              .reduce((sum: number, tx: any) => sum + tx.usdAmount, 0);
+            
+            setStats({
+              totalDeposits: totalDeposits,
+              transactionCount: txData.transactions.length,
+            });
+          } else {
+            setTransactions([]);
+          }
+        } catch (error) {
+          console.error('❌ Failed to fetch transactions:', error);
           setTransactions([]);
+        } finally {
+          setIsLoadingTransactions(false);
         }
-      } catch (error) {
-        console.error('Failed to fetch transactions:', error);
-        setTransactions([]);
-      } finally {
+      } else {
+        // If no loginid, stop loading states
+        setIsBalanceLoading(false);
         setIsLoadingTransactions(false);
+        setBalance(0);
       }
     };
 
-    loadData();
+    loadDashboardData();
   }, []);
 
   const handleRefresh = async () => {
-    const loginid = localStorage.getItem('deriv_loginid') || 'CR9999999';
+    const loginid = localStorage.getItem('deriv_loginid');
     if (!loginid) return;
     
     setIsBalanceLoading(true);
