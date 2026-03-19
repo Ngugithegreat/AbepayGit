@@ -63,18 +63,10 @@ export default function LoginPage() {
       
       if (isValid) {
         console.log('✅ Password correct!');
+        console.log('🔄 Redirecting to dashboard...');
         
-        // Show success for 2 seconds
-        alert('Login successful! Click OK to continue.');
-        
-        console.log('🚀 Redirecting in 2 seconds...');
-        
-        setTimeout(() => {
-          console.log('🚀 NOW redirecting...');
-          window.location.href = '/dashboard';
-        }, 2000);
-        
-        return;
+        // Use router.push (not replace, not window.location)
+        router.push('/dashboard');
       } else {
         console.log('❌ Password wrong');
         setError('Incorrect password. Please try again.');
