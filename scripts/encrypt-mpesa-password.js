@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const fs = require('fs');
 
 // Download production certificate from Safaricom
 // For now, use this public key (production certificate)
@@ -46,22 +45,37 @@ nBT9oLDEXqRQJoC9h8V8qP0K
 // Your M-Pesa initiator password
 const initiatorPassword = 'YOUR_INITIATOR_PASSWORD_HERE';
 
-// Encrypt the password
-const buffer = Buffer.from(initiatorPassword);
-const encrypted = crypto.publicEncrypt(
-  {
-    key: productionCert,
-    padding: crypto.constants.RSA_PKCS1_PADDING,
-  },
-  buffer
-);
+try {
+    // Encrypt the password
+    const buffer = Buffer.from(initiatorPassword);
+    const encrypted = crypto.publicEncrypt(
+    {
+        key: productionCert,
+        padding: crypto.constants.RSA_PKCS1_PADDING,
+    },
+    buffer
+    );
 
-const securityCredential = encrypted.toString('base64');
+    const securityCredential = encrypted.toString('base64');
 
+    console.log('='.repeat(80));
+    console.log('M-PESA B2C PRODUCTION SECURITY CREDENTIAL');
+    console.log('='.repeat(80));
+    console.log('\nReplace "YOUR_INITIATOR_PASSWORD_HERE" in this script with your password, then run:');
+    console.log('node scripts/encrypt-mpesa-password.js\n');
+    console.log('Add the output to Vercel Environment Variables:\n');
+    console.log('MPESA_B2C_SECURITY_CREDENTIAL=');
+    console.log(securityCredential);
+
+} catch (error) {
+    console.error('\n❌ Encryption failed. This can happen if the initiator password is not replaced.');
+    console.error('Please ensure you have replaced "YOUR_INITIATOR_PASSWORD_HERE" with your actual M-Pesa initiator password.');
+}
+
+console.log('\n' + '='.repeat(80));
+console.log('FOR SANDBOX/TESTING ENVIRONMENT');
 console.log('='.repeat(80));
-console.log('M-PESA B2C SECURITY CREDENTIAL');
-console.log('='.repeat(80));
-console.log('\nAdd this to Vercel Environment Variables:');
-console.log('\nMPESA_B2C_SECURITY_CREDENTIAL=');
-console.log(securityCredential);
+console.log('\nFor the M-Pesa sandbox environment, you can use the following pre-generated credential.');
+console.log('Set this in your .env.local or Vercel test environment:\n');
+console.log('MPESA_B2C_SECURITY_CREDENTIAL=Safaricom999!*!');
 console.log('\n' + '='.repeat(80));

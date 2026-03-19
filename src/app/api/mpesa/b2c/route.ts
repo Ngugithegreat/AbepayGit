@@ -1,5 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+function formatPhoneNumber(phone: string): string {
+    // Remove any spaces, dashes, or special characters
+    let cleaned = phone.replace(/\D/g, '');
+    
+    // If starts with 0, replace with 254
+    if (cleaned.startsWith('0')) {
+        cleaned = '254' + cleaned.substring(1);
+    } else if (cleaned.startsWith('+')) {
+        cleaned = cleaned.substring(1);
+    }
+    
+    // If doesn't start with 254, add it
+    if (!cleaned.startsWith('254')) {
+        cleaned = '254' + cleaned;
+    }
+    
+    return cleaned;
+}
+
+
 export async function POST(request: NextRequest) {
   try {
     const { phone, amount, account } = await request.json();
@@ -34,17 +54,16 @@ export async function POST(request: NextRequest) {
     const accessToken = tokenData.access_token;
 
     if (!accessToken) {
-        throw new Error('Failed to obtain M-Pesa access token.');
+        throw new Error('Failed to obtain M-Pesa access token. Check your B2C credentials.');
     }
 
     console.log('✅ Access token obtained');
 
-    // Step 2: Format phone number (254XXXXXXXXX)
-    let formattedPhone = phone.replace(/\D/g, '');
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = '254' + formattedPhone.substring(1);
-    } else if (formattedPhone.startsWith('+254')) {
-      formattedPhone = formattedPhone.substring(1);
+    // Step 2: Format phone number
+    const formattedPhone = formatPhoneNumber(phone);
+    
+    if (formattedPhone.length !== 12) {
+        return NextResponse.json({ success: false, error: `Invalid phone number format: ${phone}` }, { status: 400 });
     }
 
     // Step 3: Make B2C request
