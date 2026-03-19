@@ -22,8 +22,8 @@ export default function DerivConfirmationPage() {
   }, [router]);
 
   const handleConfirm = () => {
-    // User confirmed their details - go to create password
-    router.push('/create-password');
+    // User confirmed their details - go to M-Pesa setup
+    router.push('/setup-mpesa');
   };
 
   const handleReject = () => {

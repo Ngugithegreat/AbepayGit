@@ -16,9 +16,10 @@ export default function CreatePasswordPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    // Check if user came from confirmation
+    // Check if user came from confirmation and mpesa setup
     const tempUserInfo = sessionStorage.getItem('temp_user_info');
-    if (!tempUserInfo) {
+    const tempMpesaPhone = sessionStorage.getItem('temp_mpesa_phone');
+    if (!tempUserInfo || !tempMpesaPhone) {
       router.push('/login');
     }
   }, [router]);
@@ -27,9 +28,10 @@ export default function CreatePasswordPage() {
     e.preventDefault();
     setError('');
     
-    if (password.length < 6) {
-        setError("Password must be at least 6 characters");
-        return;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      setError('Password must be 8+ characters, with an uppercase letter, a number, and a special character.');
+      return;
     }
     
     if (password !== confirmPassword) {
@@ -41,12 +43,31 @@ export default function CreatePasswordPage() {
 
     try {
       // Get temp data
+      const token = sessionStorage.getItem('temp_oauth_token');
       const userInfo = JSON.parse(sessionStorage.getItem('temp_user_info') || '{}');
+      const mpesaPhone = sessionStorage.getItem('temp_mpesa_phone');
 
       // Hash the password before storing
       const hashedPassword = await hashPassword(password);
       
-      // Store local data
+      // Store session securely in httpOnly cookies
+      const response = await fetch('/api/auth/set-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: token,
+          account: userInfo.loginid,
+          email: userInfo.email,
+          name: userInfo.fullname,
+        }),
+      });
+
+      const sessionData = await response.json();
+      if (!response.ok || !sessionData.success) {
+        throw new Error(sessionData.error || 'Failed to save session. Please try again.');
+      }
+
+      // If session is saved, store local data
       localStorage.setItem('user_password', hashedPassword);
       localStorage.setItem('user_info', JSON.stringify({
         loginid: userInfo.loginid,
@@ -54,6 +75,20 @@ export default function CreatePasswordPage() {
         name: userInfo.fullname,
       }));
       localStorage.setItem('user_has_password', 'true');
+      
+      if (mpesaPhone) {
+        localStorage.setItem('mpesa_phone', mpesaPhone);
+
+        // Also store in Redis for server-side access
+        await fetch('/api/user/save-mpesa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            account: userInfo.loginid,
+            phone: mpesaPhone,
+          }),
+        });
+      }
 
       // Clear temp data
       sessionStorage.clear();
@@ -64,7 +99,7 @@ export default function CreatePasswordPage() {
       router.push('/login');
     } catch (error: any) {
       console.error('Setup error:', error);
-      setError('Failed to complete setup. Please try again.');
+      setError(error.message || 'Failed to complete setup. Please try again.');
     } finally {
         setIsSaving(false);
     }
@@ -89,7 +124,7 @@ export default function CreatePasswordPage() {
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold text-foreground">Create Password</h1>
           <p className="text-muted-foreground text-sm">
-            Choose a password to secure your account for local sign-in.
+            Choose a strong password to secure your account.
           </p>
         </div>
 
@@ -150,5 +185,3 @@ export default function CreatePasswordPage() {
     </div>
   );
 }
-
-    
