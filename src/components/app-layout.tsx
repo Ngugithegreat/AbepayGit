@@ -18,23 +18,20 @@ const navLinks = [
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { isLinked, isLoading, logout } = useAuth();
+  const { isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // This is a protected layout. If not loading and not linked, redirect to login.
-    if (!isLoading && !isLinked) {
-      router.push('/login');
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login');
     }
-  }, [isLoading, isLinked, router]);
+  }, [isLoading, isAuthenticated, router]);
   
   const handleLogout = () => {
     logout();
-    router.push('/login');
   };
 
-  if (isLoading || !isLinked) {
-    // Show a loading state or a blank page while redirecting
+  if (isLoading || !isAuthenticated) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -120,5 +117,3 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
-    

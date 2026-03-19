@@ -4,41 +4,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff, Loader2, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/context/auth-context';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any | null>(null);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Auth check - FIRST thing that runs
-  useEffect(() => {
-    const checkAuth = () => {
-      console.log('🔍 Dashboard: Checking auth...');
-      
-      const loginid = localStorage.getItem('deriv_loginid');
-      const hasPassword = localStorage.getItem('user_has_password');
-      
-      console.log('🔍 Dashboard: loginid:', loginid);
-      console.log('🔍 Dashboard: hasPassword:', hasPassword);
-      
-      if (loginid && hasPassword === 'true') {
-        console.log('✅ Dashboard: Authenticated!');
-        const userInfo = localStorage.getItem('user_info');
-        if (userInfo) {
-            setUser(JSON.parse(userInfo));
-        }
-        setIsAuthenticated(true);
-      } else {
-        console.log('❌ Dashboard: Not authenticated, redirecting...');
-        router.replace('/login');
-      }
-      
-      setIsCheckingAuth(false);
-    };
-
-    checkAuth();
-  }, [router]);
+  const { user, isAuthenticated } = useAuth();
 
   const [showBalance, setShowBalance] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -114,23 +84,6 @@ export default function DashboardPage() {
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, user?.loginid, fetchBalance]);
-
-  // Show loading while checking
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show nothing if not authenticated (while redirecting)
-  if (!isAuthenticated) {
-    return null;
-  }
 
   return (
     <div className="slide-in">
