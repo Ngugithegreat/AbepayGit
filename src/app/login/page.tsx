@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -64,12 +63,17 @@ export default function LoginPage() {
       
       if (isValid) {
         console.log('✅ Password correct!');
-        console.log('🚀 Redirecting to dashboard...');
         
-        // Force hard redirect (not Next.js router)
-        window.location.href = '/dashboard';
+        // Show success for 2 seconds
+        alert('Login successful! Click OK to continue.');
         
-        // Prevent any further code execution
+        console.log('🚀 Redirecting in 2 seconds...');
+        
+        setTimeout(() => {
+          console.log('🚀 NOW redirecting...');
+          window.location.href = '/dashboard';
+        }, 2000);
+        
         return;
       } else {
         console.log('❌ Password wrong');
