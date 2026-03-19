@@ -1,60 +1,115 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, DollarSign, AlertCircle, TrendingUp, Settings, Lock } from 'lucide-react';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Users, 
+  DollarSign,
+  Activity,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  RefreshCw,
+  Settings,
+  Lock,
+} from 'lucide-react';
+
+interface Stats {
+  totalDeposits: number;
+  totalWithdrawals: number;
+  activeUsers: number;
+  pendingTransactions: number;
+  todayRevenue: number;
+  depositCount: number;
+  withdrawalCount: number;
+}
+
+interface Transaction {
+  id: string;
+  type: 'deposit' | 'withdrawal';
+  derivAccount: string;
+  usdAmount: number;
+  kesAmount: number;
+  status: 'completed' | 'pending' | 'failed';
+  timestamp: number;
+}
 
 export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  
-  // Admin password (in production, this should be in environment variables)
-  const ADMIN_PASSWORD = 'abepay2026';
-
-  // Stats and rates state
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    pendingDeposits: 0,
-    totalVolume: 0,
-    activeTransactions: 0,
+  const [stats, setStats] = useState<Stats>({
+    totalDeposits: 0,
+    totalWithdrawals: 0,
+    activeUsers: 0,
+    pendingTransactions: 0,
+    todayRevenue: 0,
+    depositCount: 0,
+    withdrawalCount: 0,
   });
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [depositRate, setDepositRate] = useState(130);
   const [withdrawRate, setWithdrawRate] = useState(124);
-
-  useEffect(() => {
-    // Check if already authenticated in this session
-    const authenticated = sessionStorage.getItem('admin_authenticated');
-    if (authenticated === 'true') {
-      setIsAuthenticated(true);
-    }
-    
-    const loadRates = async () => {
-      try {
-        const response = await fetch('/api/rates/get');
-        const data = await response.json();
-        
-        if (data.success) {
-          setDepositRate(data.depositRate);
-          setWithdrawRate(data.withdrawRate);
-        }
-      } catch (error) {
-        console.error("Failed to load rates", error);
-      }
-    };
-    
-    if (isAuthenticated) {
-      loadRates();
-    }
-  }, [isAuthenticated]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const ADMIN_PASSWORD = 'abepay2026';
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (password === ADMIN_PASSWORD) {
       setIsAuthenticated(true);
       sessionStorage.setItem('admin_authenticated', 'true');
     } else {
       alert('Incorrect password');
       setPassword('');
+    }
+  };
+  
+  useEffect(() => {
+    const authenticated = sessionStorage.getItem('admin_authenticated');
+    if (authenticated === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+  
+  useEffect(() => {
+    if (isAuthenticated) {
+        loadDashboardData();
+    }
+  }, [isAuthenticated]);
+
+
+  const loadDashboardData = async () => {
+    setIsLoading(true);
+    
+    try {
+      // Load stats
+      const statsRes = await fetch('/api/admin/stats');
+      const statsData = await statsRes.json();
+      if (statsData.success) {
+        setStats(statsData.stats);
+      }
+
+      // Load recent transactions
+      const txRes = await fetch('/api/admin/transactions');
+      const txData = await txRes.json();
+      if (txData.success) {
+        setRecentTransactions(txData.transactions.slice(0, 10));
+      }
+
+      // Load current rates
+      const ratesRes = await fetch('/api/rates/get');
+      const ratesData = await ratesRes.json();
+      if (ratesData.success) {
+        setDepositRate(ratesData.depositRate);
+        setWithdrawRate(ratesData.withdrawRate);
+      }
+
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -72,35 +127,30 @@ export default function AdminDashboard() {
       const data = await response.json();
 
       if (data.success) {
-        alert('✅ Rates updated successfully!');
+        alert('Rates updated successfully!');
       } else {
-        alert('❌ Failed to update rates: ' + data.error);
+        alert('Failed to update rates');
       }
     } catch (error) {
-      alert('❌ Error updating rates');
+      console.error('Error updating rates:', error);
+      alert('Error updating rates');
     }
   };
 
-  // Password prompt screen
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="w-full max-w-md bg-card rounded-2xl p-8 shadow-2xl">
           <div className="text-center space-y-6">
-            {/* Icon */}
             <div className="flex justify-center">
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
                 <Lock className="w-10 h-10 text-primary-foreground" />
               </div>
             </div>
-
-            {/* Title */}
             <div>
               <h1 className="text-2xl font-bold text-foreground mb-2">Admin Access</h1>
               <p className="text-muted-foreground text-sm">ABEPAY Backoffice</p>
             </div>
-
-            {/* Form */}
             <form onSubmit={handleLogin} className="space-y-4">
               <input
                 type="password"
@@ -110,7 +160,6 @@ export default function AdminDashboard() {
                 className="w-full h-14 px-4 bg-input border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none"
                 required
               />
-              
               <button
                 type="submit"
                 className="w-full h-14 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground rounded-xl font-semibold text-lg shadow-xl transition-all"
@@ -118,7 +167,6 @@ export default function AdminDashboard() {
                 Login to Admin
               </button>
             </form>
-
             <p className="text-xs text-muted-foreground/80">
               Default password: abepay2026
             </p>
@@ -128,7 +176,6 @@ export default function AdminDashboard() {
     );
   }
 
-  // Render the full dashboard if authenticated
   return (
     <div className="min-h-screen bg-muted/50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -136,131 +183,165 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-            <p className="text-muted-foreground">ABEPAY Backoffice</p>
+            <p className="text-muted-foreground mt-1">ABEPAY Management Console</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-              <span className="text-xl font-black text-primary-foreground">A</span>
-            </div>
-          </div>
+          <button
+            onClick={loadDashboardData}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-card hover:bg-accent text-foreground rounded-xl transition-all"
+          >
+            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-card rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Users className="w-6 h-6 text-primary" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-gradient-to-br from-success to-green-700 rounded-2xl p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-bold text-foreground">{stats.totalUsers}</p>
-              </div>
+              <span className="text-green-200 text-sm">{stats.depositCount} txns</span>
             </div>
+            <p className="text-white/80 text-sm mb-1">Total Deposits</p>
+            <p className="text-3xl font-bold text-white">${stats.totalDeposits.toFixed(2)}</p>
           </div>
 
-          <div className="bg-card rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-warning" />
+          <div className="bg-gradient-to-br from-destructive to-orange-700 rounded-2xl p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <TrendingDown className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Pending Deposits</p>
-                <p className="text-2xl font-bold text-foreground">{stats.pendingDeposits}</p>
-              </div>
+              <span className="text-orange-200 text-sm">{stats.withdrawalCount} txns</span>
             </div>
+            <p className="text-white/80 text-sm mb-1">Total Withdrawals</p>
+            <p className="text-3xl font-bold text-white">${stats.totalWithdrawals.toFixed(2)}</p>
           </div>
 
-          <div className="bg-card rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-success" />
+          <div className="bg-gradient-to-br from-primary to-blue-700 rounded-2xl p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Volume</p>
-                <p className="text-2xl font-bold text-foreground">${stats.totalVolume}</p>
-              </div>
+              <Activity className="w-5 h-5 text-blue-200" />
             </div>
+            <p className="text-white/80 text-sm mb-1">Active Users</p>
+            <p className="text-3xl font-bold text-white">{stats.activeUsers}</p>
           </div>
 
-          <div className="bg-card rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-secondary" />
+          <div className="bg-gradient-to-br from-secondary to-purple-700 rounded-2xl p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Active Now</p>
-                <p className="text-2xl font-bold text-foreground">{stats.activeTransactions}</p>
-              </div>
+              <span className="text-purple-200 text-sm">Today</span>
             </div>
+            <p className="text-white/80 text-sm mb-1">Revenue</p>
+            <p className="text-3xl font-bold text-white">${stats.todayRevenue.toFixed(2)}</p>
           </div>
         </div>
 
-        {/* Exchange Rates Management */}
-        <div className="bg-card rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <Settings className="w-6 h-6 text-muted-foreground" />
-            <h2 className="text-xl font-bold text-foreground">Exchange Rates</h2>
-          </div>
-
+        {/* Exchange Rates */}
+        <div className="bg-card rounded-2xl p-6 shadow-xl">
+          <h2 className="text-xl font-bold text-foreground mb-6">Exchange Rates</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-2">
-                Deposit Rate (KES per 1 USD)
+                Deposit Rate (KES per USD)
               </label>
               <input
                 type="number"
                 value={depositRate}
-                onChange={(e) => setDepositRate(Number(e.target.value))}
-                className="w-full h-12 px-4 border-2 border-border bg-input rounded-xl focus:border-primary focus:outline-none"
+                onChange={(e) => setDepositRate(parseFloat(e.target.value))}
+                className="w-full h-12 px-4 bg-input border border-border rounded-xl text-foreground focus:border-primary focus:outline-none"
               />
-              <p className="text-xs text-muted-foreground/80 mt-1">
-                Users pay {depositRate} KES to get 1 USD
-              </p>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-2">
-                Withdrawal Rate (KES per 1 USD)
+                Withdrawal Rate (KES per USD)
               </label>
               <input
                 type="number"
                 value={withdrawRate}
-                onChange={(e) => setWithdrawRate(Number(e.target.value))}
-                className="w-full h-12 px-4 border-2 border-border bg-input rounded-xl focus:border-primary focus:outline-none"
+                onChange={(e) => setWithdrawRate(parseFloat(e.target.value))}
+                className="w-full h-12 px-4 bg-input border border-border rounded-xl text-foreground focus:border-primary focus:outline-none"
               />
-              <p className="text-xs text-muted-foreground/80 mt-1">
-                Users receive {withdrawRate} KES for 1 USD
-              </p>
             </div>
           </div>
-
           <button
             onClick={handleUpdateRates}
-            className="mt-6 h-12 px-8 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-primary-foreground rounded-xl font-semibold shadow-lg transition-all"
+            className="mt-6 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold shadow-lg transition-all"
           >
             Update Rates
           </button>
         </div>
 
-        {/* Pending Deposits */}
-        <div className="bg-card rounded-2xl p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-foreground mb-4">Pending Deposits</h2>
-          <div className="text-center py-8 text-muted-foreground">
-            <AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>No pending deposits</p>
-          </div>
-        </div>
-
-        {/* User Management */}
-        <div className="bg-card rounded-2xl p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-foreground mb-4">User Management</h2>
-          <div className="text-center py-8 text-muted-foreground">
-            <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>No users yet</p>
+        {/* Recent Transactions */}
+        <div className="bg-card rounded-2xl p-6 shadow-xl">
+          <h2 className="text-xl font-bold text-foreground mb-6">Recent Transactions</h2>
+          <div className="space-y-3">
+            {recentTransactions.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No transactions yet</p>
+            ) : (
+              recentTransactions.map((tx, idx) => (
+                <div
+                  key={idx}
+                  className="bg-accent/50 rounded-xl p-4 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      tx.type === 'deposit' ? 'bg-success/20' : 'bg-destructive/20'
+                    }`}>
+                      {tx.type === 'deposit' ? (
+                        <TrendingUp className="w-5 h-5 text-success" />
+                      ) : (
+                        <TrendingDown className="w-5 h-5 text-destructive" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-foreground font-semibold capitalize">
+                        {tx.type}
+                      </p>
+                      <p className="text-muted-foreground text-sm">{tx.derivAccount}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-foreground font-semibold">
+                      ${tx.usdAmount.toFixed(2)}
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      {tx.kesAmount.toLocaleString()} KES
+                    </p>
+                  </div>
+                  <div>
+                    {tx.status === 'completed' && (
+                      <span className="flex items-center gap-1 text-success text-sm">
+                        <CheckCircle className="w-4 h-4" />
+                        Completed
+                      </span>
+                    )}
+                    {tx.status === 'pending' && (
+                      <span className="flex items-center gap-1 text-warning text-sm">
+                        <Clock className="w-4 h-4" />
+                        Pending
+                      </span>
+                    )}
+                    {tx.status === 'failed' && (
+                      <span className="flex items-center gap-1 text-destructive text-sm">
+                        <AlertCircle className="w-4 h-4" />
+                        Failed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+    
