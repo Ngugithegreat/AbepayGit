@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,29 +6,34 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
+// Function to extract first name, removing titles
+const getFirstName = (fullName: string): string => {
+  if (!fullName) return '';
+  
+  // Remove titles like Mr, Ms, Mrs, Dr, Prof
+  const name = fullName
+    .replace(/^(Mr\.?|Ms\.?|Mrs\.?|Dr\.?|Prof\.?)\s+/i, '')
+    .trim();
+  
+  // Get the first word
+  const firstName = name.split(' ')[0];
+  
+  return firstName || '';
+};
+
 export default function WelcomeBackPage() {
   const router = useRouter();
   const [firstName, setFirstName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const userInfo = localStorage.getItem('user_info');
-    if (userInfo) {
+    const userInfoString = localStorage.getItem('user_info');
+    if (userInfoString) {
       try {
-        const user = JSON.parse(userInfo);
-        const fullName = user.name || '';
-        const nameParts = fullName.split(' ');
-        
-        // List of common salutations to filter out
-        const salutations = ['Mr', 'Mrs', 'Ms', 'Dr', 'Mr.', 'Mrs.', 'Ms.', 'Dr.'];
-        let parsedFirstName = nameParts[0];
-
-        // If the first part is a salutation and there's another part, use the next part
-        if (salutations.includes(parsedFirstName) && nameParts.length > 1) {
-            parsedFirstName = nameParts[1];
-        }
-        
-        setFirstName(parsedFirstName);
+        const user = JSON.parse(userInfoString);
+        // Use the new function to get the first name
+        const extractedFirstName = getFirstName(user.name);
+        setFirstName(extractedFirstName);
       } catch (e) {
         console.error("Failed to parse user info", e);
         router.push('/login');
@@ -63,6 +69,7 @@ export default function WelcomeBackPage() {
         </div>
 
         <div className="space-y-2">
+          {/* Using the cleaned first name here */}
           <h1 className="text-3xl font-bold text-foreground">Welcome Back, {firstName}!</h1>
           <p className="text-muted-foreground">Ready to continue your session?</p>
         </div>
