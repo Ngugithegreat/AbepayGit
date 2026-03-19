@@ -1,5 +1,5 @@
+'use client';
 import { NextRequest, NextResponse } from 'next/server';
-import { WebSocket } from 'ws';
 
 // This endpoint simulates initiating a withdrawal from Deriv,
 // which would typically send a verification email to the user.
@@ -23,26 +23,39 @@ export async function POST(request: NextRequest) {
     // e.g. ws.send(JSON.stringify({ cashier: 1, withdraw: 1, provider: 'send_email', amount: amount }));
     
     // For this demo, we will just simulate a successful initiation.
+    const { WebSocket } = await import('ws');
     const ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${process.env.NEXT_PUBLIC_DERIV_APP_ID}`);
     
     const wsAuth = new Promise<boolean>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          ws.close();
+          reject(new Error('Timeout connecting to Deriv WS'));
+        }, 10000);
+
         ws.on('open', () => {
             ws.send(JSON.stringify({ authorize: userToken }));
         });
         ws.on('message', (data) => {
             const response = JSON.parse(data.toString());
             if (response.error) {
+                clearTimeout(timeout);
+                ws.close();
                 reject(new Error(response.error.message));
             }
             if (response.authorize) {
+                clearTimeout(timeout);
+                ws.close();
                 resolve(true);
             }
         });
-        ws.on('error', (err) => reject(err));
+        ws.on('error', (err) => {
+            clearTimeout(timeout);
+            ws.close();
+            reject(err);
+        });
     });
 
     await wsAuth;
-    ws.close();
 
     console.log('✅ Simulated Deriv withdrawal initiation successfully.');
 

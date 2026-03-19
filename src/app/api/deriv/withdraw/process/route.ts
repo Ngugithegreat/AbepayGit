@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { WebSocket } from 'ws';
 import { Redis } from '@upstash/redis';
 
 // This endpoint simulates processing the withdrawal after user provides a verification code
@@ -31,13 +30,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid verification code.' }, { status: 400 });
     }
     
+    const derivResult = {
+        success: true,
+        transaction_id: `sim_wth_${Date.now()}`
+    };
+    
     console.log('✅ Deriv verification code accepted (simulated)');
 
     // Step 2: Now that funds are "withdrawn" from Deriv, send them to the user via M-Pesa B2C
-    // TODO: This requires a real M-Pesa B2C API integration.
-    // For now, we will simulate this and log it.
+    // In a real app, you would call the M-Pesa B2C API here.
+    // For this demo, we will simulate this and log it, assuming success.
     console.log(`📱 M-PESA B2C PAYOUT (SIMULATED): Send ${kesAmount} KES to ${phone}`);
-
+    const b2cData = {
+        success: true,
+        conversationId: `sim_b2c_${Date.now()}`
+    };
 
     // Step 3: Record the transaction in Redis
     const redis = new Redis({
@@ -51,10 +58,10 @@ export async function POST(request: NextRequest) {
       type: 'withdrawal',
       kesAmount,
       usdAmount: amount,
-      mpesaReceipt: `SIM_${Date.now()}`, // Simulated M-Pesa receipt
+      mpesaReceipt: b2cData.conversationId, 
       derivAccount: derivAccount,
       phoneNumber: phone,
-      transactionId: `deriv_sim_${Date.now()}`,
+      transactionId: derivResult.transaction_id,
       timestamp: Date.now(),
       status: 'completed',
     };
