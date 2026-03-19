@@ -21,23 +21,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace('/login');
-    }
-  }, [isLoading, isAuthenticated, router]);
+  // useEffect(() => {
+  //   if (!isLoading && !isAuthenticated) {
+  //     router.replace('/login');
+  //   }
+  // }, [isLoading, isAuthenticated, router]);
   
   const handleLogout = () => {
     logout();
   };
 
-  if (isLoading || !isAuthenticated) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-             <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        </div>
-    );
-  }
+  // if (isLoading || !isAuthenticated) {
+  //   return (
+  //       <div className="flex h-screen w-full items-center justify-center bg-background">
+  //            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+  //       </div>
+  //   );
+  // }
   
   return (
     <div className="min-h-screen bg-background">
