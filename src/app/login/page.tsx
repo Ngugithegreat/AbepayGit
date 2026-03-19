@@ -62,10 +62,18 @@ export default function LoginPage() {
       const isValid = await verifyPassword(password, storedHash);
       
       if (isValid) {
-        console.log('✅ Password correct!');
-        console.log('🔄 Redirecting to dashboard...');
+        console.log('=================================');
+        console.log('✅ LOGIN: Password correct!');
+        console.log('=================================');
         
-        // Use router.push (not replace, not window.location)
+        // Verify data is in localStorage
+        console.log('📍 Verifying localStorage before redirect:');
+        console.log('   deriv_loginid:', localStorage.getItem('deriv_loginid'));
+        console.log('   user_has_password:', localStorage.getItem('user_has_password'));
+        console.log('   user_info:', localStorage.getItem('user_info'));
+        console.log('=================================');
+        
+        console.log('🚀 Redirecting to dashboard...');
         router.push('/dashboard');
       } else {
         console.log('❌ Password wrong');
