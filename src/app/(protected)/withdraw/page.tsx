@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function WithdrawPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [isReady, setIsReady] = useState(false);
   
   const [step, setStep] = useState<'amount' | 'phone' | 'verify'>('amount');
   const [usdAmount, setUsdAmount] = useState('');
@@ -22,64 +22,65 @@ export default function WithdrawPage() {
   const [derivAccount, setDerivAccount] = useState('');
 
   useEffect(() => {
-    loadWithdrawData();
-  }, []);
-
-  const loadWithdrawData = async () => {
-    setIsLoading(true);
+    // Check auth when component mounts
     const loginid = localStorage.getItem('deriv_loginid');
-    
-    console.log('📍 Withdraw page - loginid:', loginid);
-    
-    if (loginid) {
-        setDerivAccount(loginid);
+    const hasPassword = localStorage.getItem('user_has_password');
 
-        // Get M-Pesa phone
-        const savedPhone = localStorage.getItem('mpesa_phone');
-        if (savedPhone) {
-          setMpesaPhone(savedPhone);
-        } else {
-          // Try to get from Redis
-          try {
-            const phoneRes = await fetch(`/api/user/get-mpesa?account=${loginid}`);
-            const phoneData = await phoneRes.json();
-            if (phoneData.success && phoneData.phone) {
-              setMpesaPhone(phoneData.phone);
-              localStorage.setItem('mpesa_phone', phoneData.phone);
-            }
-          } catch (e) {
-            console.error('Failed to get mpesa phone', e);
-          }
-        }
-    
-        // Get balance
-        try {
-          const balanceRes = await fetch(`/api/deriv/balance?account=${loginid}`);
-          const balanceData = await balanceRes.json();
-          if (balanceData.success) {
-            setBalance(balanceData.balance);
-          } else {
-            setError('Could not fetch balance.');
-            setBalance(0);
-          }
-        } catch {
-          setError('Could not fetch balance.');
-          setBalance(0);
-        }
-        
-        // Get withdrawal rate
-        try {
-          const rateRes = await fetch('/api/rates/get');
-          const rateData = await rateRes.json();
-          if (rateData.success) {
-            setRate(rateData.withdrawRate);
-          }
-        } catch {
-          // Use default rate
-        }
+    if (!loginid || hasPassword !== 'true') {
+      router.replace('/login');
     } else {
-        setError('No Deriv account found. Please log in again.');
+      loadWithdrawData(loginid);
+      setIsReady(true);
     }
+  }, [router]);
+
+  const loadWithdrawData = async (loginid: string) => {
+    setIsLoading(true);
+    setDerivAccount(loginid);
+    
+    // Get M-Pesa phone
+    const savedPhone = localStorage.getItem('mpesa_phone');
+    if (savedPhone) {
+      setMpesaPhone(savedPhone);
+    } else {
+      try {
+        const phoneRes = await fetch(`/api/user/get-mpesa?account=${loginid}`);
+        const phoneData = await phoneRes.json();
+        if (phoneData.success && phoneData.phone) {
+          setMpesaPhone(phoneData.phone);
+          localStorage.setItem('mpesa_phone', phoneData.phone);
+        }
+      } catch (e) {
+        console.error('Failed to get mpesa phone', e);
+      }
+    }
+
+    // Get balance
+    try {
+      const balanceRes = await fetch(`/api/deriv/balance?account=${loginid}`);
+      const balanceData = await balanceRes.json();
+      if (balanceData.success) {
+        setBalance(balanceData.balance);
+      } else {
+        setError('Could not fetch balance.');
+        setBalance(0);
+      }
+    } catch {
+      setError('Could not fetch balance.');
+      setBalance(0);
+    }
+    
+    // Get withdrawal rate
+    try {
+      const rateRes = await fetch('/api/rates/get');
+      const rateData = await rateRes.json();
+      if (rateData.success) {
+        setRate(rateData.withdrawRate);
+      }
+    } catch {
+      // Use default rate
+    }
+
     setIsLoading(false);
   };
 
@@ -186,6 +187,14 @@ export default function WithdrawPage() {
       setIsLoading(false);
     }
   };
+
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="slide-in">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -19,6 +18,8 @@ const formSchema = z.object({
 export default function DepositPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [isReady, setIsReady] = useState(false);
+
   const [usdAmount, setUsdAmount] = useState('0.00');
   const [exchangeRate, setExchangeRate] = useState(130); // Default rate
   const [showModal, setShowModal] = useState(false);
@@ -44,17 +45,21 @@ export default function DepositPage() {
   const watchedAmount = watch('amount');
 
   useEffect(() => {
-    loadDepositData();
-    loadRate();
-  }, []);
-  
-  const loadDepositData = () => {
+    // Check auth when component mounts
     const loginid = localStorage.getItem('deriv_loginid');
-    if (loginid) {
-      setUserAccount(loginid);
+    const hasPassword = localStorage.getItem('user_has_password');
+
+    if (!loginid || hasPassword !== 'true') {
+      router.replace('/login');
     } else {
-      console.log('Deposit page: No loginid found.');
+      loadDepositData(loginid);
+      loadRate();
+      setIsReady(true);
     }
+  }, [router]);
+  
+  const loadDepositData = (loginid: string) => {
+    setUserAccount(loginid);
   };
 
   const loadRate = async () => {
@@ -124,6 +129,14 @@ export default function DepositPage() {
         console.error("Deposit error:", error);
         form.setError('root', { type: 'manual', message: "An unexpected network error occurred. Please try again." });
     }
+  }
+
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (

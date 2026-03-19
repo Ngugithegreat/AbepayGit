@@ -1,8 +1,33 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import AccountSettings from '@/components/settings/account-card';
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    // Check auth when component mounts
+    const loginid = localStorage.getItem('deriv_loginid');
+    const hasPassword = localStorage.getItem('user_has_password');
+
+    if (!loginid || hasPassword !== 'true') {
+      router.replace('/login');
+    } else {
+      setIsReady(true);
+    }
+  }, [router]);
+
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+  
   return (
       <div className="slide-in">
         <div className="mb-6">

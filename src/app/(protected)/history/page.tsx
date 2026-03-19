@@ -1,7 +1,7 @@
 'use client';
 
-import { useAuth } from '@/context/auth-context';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 const getStatusClass = (status: string) => {
@@ -22,31 +22,46 @@ const getTypeIcon = (type: string) => {
 }
 
 export default function HistoryPage() {
-  const { selectedAccount } = useAuth();
+  const router = useRouter();
+  const [isReady, setIsReady] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (selectedAccount?.loginid) {
-      const fetchTransactions = async () => {
-        setIsLoading(true);
-        try {
-          const response = await fetch(`/api/transactions?account=${selectedAccount.loginid}`);
-          const data = await response.json();
-          if (data.success) {
-            setTransactions(data.transactions);
-          }
-        } catch (error) {
-          console.error("Failed to fetch transaction history", error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchTransactions();
+    // Check auth when component mounts
+    const loginid = localStorage.getItem('deriv_loginid');
+    const hasPassword = localStorage.getItem('user_has_password');
+
+    if (!loginid || hasPassword !== 'true') {
+      router.replace('/login');
     } else {
-        setIsLoading(false);
+      fetchTransactions();
+      setIsReady(true);
     }
-  }, [selectedAccount]);
+  }, [router]);
+  
+  const fetchTransactions = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/transactions`);
+      const data = await response.json();
+      if (data.success) {
+        setTransactions(data.transactions);
+      }
+    } catch (error) {
+      console.error("Failed to fetch transaction history", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
       <div className="slide-in">

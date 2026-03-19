@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const [isReady, setIsReady] = useState(false);
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [userInfo, setUserInfo] = useState({
@@ -14,31 +17,40 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    const loadProfileData = () => {
-      const userInfoStr = localStorage.getItem('user_info');
-      const loginid = localStorage.getItem('deriv_loginid');
-      const mpesaPhone = localStorage.getItem('mpesa_phone');
+    // Check auth when component mounts
+    const loginid = localStorage.getItem('deriv_loginid');
+    const hasPassword = localStorage.getItem('user_has_password');
 
-      console.log('👤 Profile - userInfo:', userInfoStr);
-      console.log('👤 Profile - loginid:', loginid);
+    if (!loginid || hasPassword !== 'true') {
+      router.replace('/login');
+    } else {
+      loadProfileData();
+      setIsReady(true);
+    }
+  }, [router]);
 
-      if (userInfoStr) {
-        try {
-          const info = JSON.parse(userInfoStr);
-          setUserInfo({
-            name: info.fullname || info.name || '',
-            email: info.email || '',
-            loginid: info.loginid || loginid || '',
-            mpesaPhone: mpesaPhone || '',
-          });
-        } catch (e) {
-          console.error("Failed to parse user info", e);
-        }
+  const loadProfileData = () => {
+    const userInfoStr = localStorage.getItem('user_info');
+    const loginid = localStorage.getItem('deriv_loginid');
+    const mpesaPhone = localStorage.getItem('mpesa_phone');
+
+    console.log('👤 Profile - userInfo:', userInfoStr);
+    console.log('👤 Profile - loginid:', loginid);
+
+    if (userInfoStr) {
+      try {
+        const info = JSON.parse(userInfoStr);
+        setUserInfo({
+          name: info.fullname || info.name || '',
+          email: info.email || '',
+          loginid: info.loginid || loginid || '',
+          mpesaPhone: mpesaPhone || '',
+        });
+      } catch (e) {
+        console.error("Failed to parse user info", e);
       }
-    };
-
-    loadProfileData();
-  }, []);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +60,14 @@ export default function ProfilePage() {
         toast({ title: "Profile Updated", description: "Your changes have been saved." });
         setIsSaving(false);
     }, 1500)
+  }
+
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (

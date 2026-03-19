@@ -6,7 +6,9 @@ import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff, Loader2,
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [isReady, setIsReady] = useState(false);
 
+  // States for the dashboard itself
   const [showBalance, setShowBalance] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
@@ -14,19 +16,32 @@ export default function DashboardPage() {
   const [isBalanceLoading, setIsBalanceLoading] = useState(true);
   const [stats, setStats] = useState({ totalDeposits: 0, transactionCount: 0 });
   const [displayUser, setDisplayUser] = useState({ name: 'User', loginid: '' });
-
+  
   useEffect(() => {
-    const loadDashboardData = async () => {
+    // Check auth when component mounts
+    const loginid = localStorage.getItem('deriv_loginid');
+    const hasPassword = localStorage.getItem('user_has_password');
+
+    console.log('🏠 Dashboard: Checking auth');
+    console.log('   loginid:', loginid);
+    console.log('   hasPassword:', hasPassword);
+
+    if (!loginid || hasPassword !== 'true') {
+      console.log('❌ Not logged in, redirecting...');
+      router.replace('/login');
+    } else {
+      console.log('✅ Logged in, loading dashboard');
+      loadDashboardData(loginid);
+      setIsReady(true);
+    }
+  }, [router]);
+
+  const loadDashboardData = async (loginid: string) => {
       setIsBalanceLoading(true);
       setIsLoadingTransactions(true);
   
       // Get user data from localStorage
       const userInfoStr = localStorage.getItem('user_info');
-      const loginid = localStorage.getItem('deriv_loginid');
-  
-      console.log('📊 Dashboard loading data...');
-      console.log('User info:', userInfoStr);
-      console.log('Login ID:', loginid);
   
       if (userInfoStr) {
         try {
@@ -39,57 +54,46 @@ export default function DashboardPage() {
         setDisplayUser({ name: 'User', loginid: loginid || '' });
       }
   
-      if (loginid) {
-        // Fetch balance
-        try {
-          const balanceResponse = await fetch(`/api/deriv/balance?account=${loginid}`);
-          const balanceData = await balanceResponse.json();
-          if (balanceData.success) {
-            setBalance(balanceData.balance);
-            console.log('✅ Balance loaded:', balanceData.balance);
-          } else {
-            setBalance(0);
-          }
-        } catch (error) {
-          console.error('❌ Failed to fetch balance:', error);
+      // Fetch balance
+      try {
+        const balanceResponse = await fetch(`/api/deriv/balance?account=${loginid}`);
+        const balanceData = await balanceResponse.json();
+        if (balanceData.success) {
+          setBalance(balanceData.balance);
+        } else {
           setBalance(0);
-        } finally {
-          setIsBalanceLoading(false);
         }
-  
-        // Fetch transactions
-        try {
-          const txResponse = await fetch(`/api/transactions`); 
-          const txData = await txResponse.json();
-          if (txData.success) {
-            setTransactions(txData.transactions);
-            const totalDeposits = txData.transactions
-              .filter((tx: any) => tx.type === 'deposit' && tx.status === 'completed')
-              .reduce((sum: number, tx: any) => sum + tx.usdAmount, 0);
-            
-            setStats({
-              totalDeposits: totalDeposits,
-              transactionCount: txData.transactions.length,
-            });
-          } else {
-            setTransactions([]);
-          }
-        } catch (error) {
-          console.error('❌ Failed to fetch transactions:', error);
-          setTransactions([]);
-        } finally {
-          setIsLoadingTransactions(false);
-        }
-      } else {
-        // If no loginid, stop loading states
-        setIsBalanceLoading(false);
-        setIsLoadingTransactions(false);
+      } catch (error) {
+        console.error('❌ Failed to fetch balance:', error);
         setBalance(0);
+      } finally {
+        setIsBalanceLoading(false);
       }
-    };
-
-    loadDashboardData();
-  }, []);
+  
+      // Fetch transactions
+      try {
+        const txResponse = await fetch(`/api/transactions`); 
+        const txData = await txResponse.json();
+        if (txData.success) {
+          setTransactions(txData.transactions);
+          const totalDeposits = txData.transactions
+            .filter((tx: any) => tx.type === 'deposit' && tx.status === 'completed')
+            .reduce((sum: number, tx: any) => sum + tx.usdAmount, 0);
+          
+          setStats({
+            totalDeposits: totalDeposits,
+            transactionCount: txData.transactions.length,
+          });
+        } else {
+          setTransactions([]);
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch transactions:', error);
+        setTransactions([]);
+      } finally {
+        setIsLoadingTransactions(false);
+      }
+  };
 
   const handleRefresh = async () => {
     const loginid = localStorage.getItem('deriv_loginid');
@@ -110,6 +114,14 @@ export default function DashboardPage() {
       setIsBalanceLoading(false);
     }
   };
+
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="slide-in">
