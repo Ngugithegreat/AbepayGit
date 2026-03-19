@@ -133,7 +133,9 @@ export default function LoginPage() {
               </div>
               
               {error && (
-                <p className="text-destructive text-sm text-center">{error}</p>
+                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-sm">
+                    {error}
+                </div>
               )}
 
               <button
@@ -148,9 +150,11 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => {
                   // Clear account and start fresh
-                  localStorage.clear();
-                  sessionStorage.clear();
-                  window.location.reload();
+                  if (confirm('This will log you out. Are you sure?')) {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.reload();
+                  }
                 }}
                 className="w-full text-sm text-primary hover:text-primary/80 font-medium"
               >
