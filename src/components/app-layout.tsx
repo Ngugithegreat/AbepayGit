@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 
 const navLinks = [
@@ -17,12 +17,27 @@ const navLinks = [
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { logout } = useAuth();
-  
-  const handleLogout = () => {
-    logout();
-  };
-  
+  const { isLinked, isLoading, logout } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isLinked) {
+      router.push('/login');
+    }
+  }, [isLoading, isLinked, router]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!isLinked) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <nav className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-20">
@@ -53,7 +68,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
               <div className="ml-4 flex items-center">
                 <button
-                  onClick={handleLogout}
+                  onClick={logout}
                   className="bg-secondary p-1.5 rounded-full text-secondary-foreground hover:bg-secondary/80 focus:outline-none"
                   aria-label="Logout"
                 >
@@ -62,7 +77,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
               <div className="ml-4 md:hidden">
                 <button
-                  id="mobileMenuButton"
                   onClick={() => setMenuOpen(!menuOpen)}
                   className="bg-secondary p-1.5 rounded-full text-secondary-foreground hover:bg-secondary/80 focus:outline-none"
                   aria-label="Open menu"
@@ -75,7 +89,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {menuOpen && (
-          <div id="mobileMenu" className="md:hidden border-t border-border">
+          <div className="md:hidden border-t border-border">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
               {navLinks.map(link => (
                 <Link
