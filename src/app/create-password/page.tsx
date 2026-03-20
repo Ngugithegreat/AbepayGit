@@ -2,42 +2,40 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Lock, Shield } from 'lucide-react';
-
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function CreatePasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [userInfo, setUserInfo] = useState<any>(null);
 
   useEffect(() => {
-    // Check if user came from confirmation and mpesa setup
+    // Get temp data from sessionStorage
     const tempUserInfo = sessionStorage.getItem('temp_user_info');
-    const tempMpesaPhone = sessionStorage.getItem('temp_mpesa_phone');
-    if (!tempUserInfo || !tempMpesaPhone) {
+    if (!tempUserInfo) {
       router.push('/login');
+      return;
     }
+    setUserInfo(JSON.parse(tempUserInfo));
   }, [router]);
+
+  const hashPassword = async (pwd: string) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(pwd);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(password)) {
-      setError('Password must be 8+ characters, with an uppercase letter, a number, and a special character.');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
     
@@ -46,27 +44,20 @@ export default function CreatePasswordPage() {
       return;
     }
 
-    setIsSaving(true);
-
     try {
-      // Get temp data
       const token = sessionStorage.getItem('temp_oauth_token');
       const accounts = sessionStorage.getItem('temp_oauth_accounts');
-      const userInfoStr = sessionStorage.getItem('temp_user_info');
       const mpesaPhone = sessionStorage.getItem('temp_mpesa_phone');
 
-      if (!token || !userInfoStr) {
-        throw new Error('Missing session data. Please start the login process again.');
+      if (!token || !userInfo) {
+        throw new Error('Missing session data');
       }
 
-      const userInfo = JSON.parse(userInfoStr);
+      console.log('💾 Saving user data...');
 
-      console.log('💾 Saving user data:', userInfo);
-
-      // Hash password
       const hashedPassword = await hashPassword(password);
 
-      // Store EVERYTHING in localStorage
+      // Save EVERYTHING to localStorage
       localStorage.setItem('deriv_token1', token);
       localStorage.setItem('deriv_accounts', accounts || '');
       localStorage.setItem('deriv_loginid', userInfo.loginid);
@@ -83,27 +74,20 @@ export default function CreatePasswordPage() {
         localStorage.setItem('mpesa_phone', mpesaPhone);
       }
 
-      console.log('✅ User data saved to localStorage');
+      console.log('✅ Data saved to localStorage');
 
-      // Save token to Redis for balance API
+      // Save to Redis
       await fetch('/api/user/save-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          account: userInfo.loginid,
-          token: token,
-        }),
+        body: JSON.stringify({ account: userInfo.loginid, token }),
       });
 
-      // Save M-Pesa phone to Redis
       if (mpesaPhone) {
         await fetch('/api/user/save-mpesa', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            account: userInfo.loginid,
-            phone: mpesaPhone,
-          }),
+          body: JSON.stringify({ account: userInfo.loginid, phone: mpesaPhone }),
         });
       }
 
@@ -111,91 +95,78 @@ export default function CreatePasswordPage() {
       sessionStorage.clear();
 
       console.log('✅ Account setup complete!');
+      console.log('🚀 Redirecting to dashboard...');
 
-      // Instead of going to login, go straight to dashboard
+      // CRITICAL: Use window.location.href for full page reload
       window.location.href = '/dashboard';
-    } catch (error: any) {
+
+    } catch (error) {
       console.error('Setup error:', error);
-      setError(error.message || 'Failed to complete setup');
-    } finally {
-        setIsSaving(false);
+      setError('Failed to complete setup');
     }
   };
 
+  if (!userInfo) {
+    return <div>Loading...</div>;
+  }
+
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md space-y-8">
-        {/* Icon */}
-        <div className="flex justify-center">
-          <div className="relative">
-            <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-secondary to-secondary/80 flex items-center justify-center shadow-2xl">
-              <Lock className="w-16 h-16 text-secondary-foreground" strokeWidth={2.5} />
-            </div>
-            <div className="absolute -bottom-2 -right-2 w-12 h-12 rounded-xl bg-gradient-to-br from-secondary/80 to-secondary/70 flex items-center justify-center">
-              <Shield className="w-6 h-6 text-secondary-foreground" />
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-white rounded-2xl p-8 shadow-xl space-y-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Password</h2>
+          <p className="text-gray-600 text-sm">Secure your account</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password (min 8 characters)"
+                className="w-full h-14 px-4 pr-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-gray-900"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Title */}
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">Create Password</h1>
-          <p className="text-muted-foreground text-sm">
-            Choose a strong password to secure your account.
-          </p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Password */}
-          <div className="relative">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Confirm Password
+            </label>
             <input
               type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your new password"
-              className="w-full h-14 px-4 bg-input border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-secondary focus:outline-none"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-            >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-
-          {/* Confirm Password */}
-          <div className="relative">
-            <input
-              type={showConfirm ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm Password"
-              className="w-full h-14 px-4 bg-input border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-secondary focus:outline-none"
+              placeholder="Confirm password"
+              className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-gray-900"
               required
             />
-            <button
-              type="button"
-              onClick={() => setShowConfirm(!showConfirm)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-            >
-              {showConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
           </div>
 
           {error && (
-            <p className="text-destructive text-sm text-center bg-destructive/10 p-3 rounded-lg">{error}</p>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
           )}
 
-          {/* Submit */}
           <button
             type="submit"
-            disabled={isSaving}
-            className="w-full h-14 bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary/80 text-secondary-foreground rounded-xl font-semibold text-lg shadow-xl transition-all disabled:opacity-50"
+            className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl font-semibold text-lg shadow-lg"
           >
-            {isSaving ? <span className="loader h-5 w-5 border-2 rounded-full"></span> : 'Finish Setup'}
+            Complete Setup
           </button>
         </form>
       </div>
