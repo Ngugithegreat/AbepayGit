@@ -10,25 +10,29 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check auth ONLY ONCE when layout mounts
-    console.log('🔒 Protected Layout: Checking auth...');
-    
-    const loginid = localStorage.getItem('deriv_loginid');
-    const hasPassword = localStorage.getItem('user_has_password');
+    // Delay to ensure localStorage is ready
+    const timer = setTimeout(() => {
+      console.log('🔒 Protected Layout: Checking auth...');
+      
+      const loginid = localStorage.getItem('deriv_loginid');
+      const hasPassword = localStorage.getItem('user_has_password');
 
-    console.log('   loginid:', loginid);
-    console.log('   hasPassword:', hasPassword);
+      console.log('   loginid:', loginid);
+      console.log('   hasPassword:', hasPassword);
 
-    if (loginid && hasPassword === 'true') {
-      console.log('✅ Authenticated - allowing access');
-      setIsAuthenticated(true);
-    } else {
-      console.log('❌ Not authenticated - redirecting to login');
-      router.replace('/login');
-    }
+      if (loginid && hasPassword === 'true') {
+        console.log('✅ Authenticated - allowing access');
+        setIsAuthenticated(true);
+      } else {
+        console.log('❌ Not authenticated - redirecting to login');
+        router.replace('/login');
+      }
 
-    setIsChecked(true);
-  }, [router]); // Re-added router to dependency array to follow React hook linting rules, but the logic remains sound.
+      setIsChecked(true);
+    }, 200); // 200ms delay
+
+    return () => clearTimeout(timer);
+  }, [router]);
 
   // Show loading while checking
   if (!isChecked) {
