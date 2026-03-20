@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 
 const navLinks = [
@@ -18,13 +18,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const { isLinked, isLoading, logout } = useAuth();
-  const router = useRouter();
 
   useEffect(() => {
+    // Don't redirect here - the protected layout already handles it
+    // Just check if loaded
     if (!isLoading && !isLinked) {
-      router.push('/login');
+      console.log('⚠️ AppLayout: User not linked');
     }
-  }, [isLoading, isLinked, router]);
+  }, [isLoading, isLinked]);
 
   if (isLoading) {
     return (
