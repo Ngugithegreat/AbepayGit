@@ -3,99 +3,101 @@ import { Redis } from '@upstash/redis';
 
 export async function POST(request: NextRequest) {
   try {
-    const { amount, kesAmount, phone, verificationCode, account } = await request.json();
+    const body = await request.json();
+    const { amount, kesAmount, phone, verificationCode, account } = body;
 
-    if (!account) {
-       return NextResponse.json({ success: false, error: 'Unauthorized: Missing account data' }, { status: 401 });
-    }
-     if (!amount || !kesAmount || !phone || !verificationCode) {
-      return NextResponse.json({ success: false, error: 'Missing required withdrawal data' }, { status: 400 });
+    console.log('💸 Processing withdrawal with verification code...');
+
+    if (!amount || !phone || !verificationCode || !account) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required fields' },
+        { status: 400 }
+      );
     }
 
-    // Fetch token from Redis
     const redis = new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL!,
       token: process.env.UPSTASH_REDIS_REST_TOKEN!,
     });
-    const userToken = await redis.get<string>(`user_token:${account}`);
 
+    // Get user's OAuth token
+    const userToken = await redis.get(`user_token:${account}`);
+    
     if (!userToken) {
-      return NextResponse.json({ success: false, error: 'Unauthorized: Missing token' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: 'User token not found' },
+        { status: 400 }
+      );
     }
 
-    console.log('💸 Processing withdrawal:', { account, amount, kesAmount, phone });
+    console.log('🔐 Verifying withdrawal with Deriv...');
 
-    // Step 1: Verify code with Deriv and deduct balance
-    const { WebSocket } = await import('ws');
-    const ws = new WebSocket(
-      `wss://ws.derivws.com/websockets/v3?app_id=${process.env.NEXT_PUBLIC_DERIV_APP_ID}`
-    );
+    // Connect to Deriv WebSocket to verify and withdraw
+    const ws = await import('ws');
+    const socket = new ws.WebSocket('wss://ws.derivws.com/websockets/v3?app_id=123981');
 
-    const derivResult = await new Promise<any>((resolve, reject) => {
+    const withdrawResult = await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        ws.close();
-        reject(new Error('Timeout'));
+        socket.close();
+        reject(new Error('Withdrawal verification timeout'));
       }, 30000);
 
-      ws.on('open', () => {
-        ws.send(JSON.stringify({ authorize: userToken }));
+      socket.on('open', () => {
+        // Authorize first
+        socket.send(JSON.stringify({
+          authorize: userToken,
+        }));
       });
 
-      let authorized = false;
-
-      ws.on('message', (data: any) => {
+      socket.on('message', (data: any) => {
         const response = JSON.parse(data.toString());
-        console.log('📥 Deriv response:', response);
 
         if (response.error) {
           clearTimeout(timeout);
-          ws.close();
+          socket.close();
           reject(new Error(response.error.message));
           return;
         }
 
-        if (response.authorize && !authorized) {
-          authorized = true;
-          console.log('✅ Authorized, processing withdrawal with verification code...');
-
-          // Process withdrawal with verification code
-          ws.send(JSON.stringify({
+        // After authorization, request paymentagent_withdraw with verification code
+        if (response.authorize) {
+          console.log('✅ Authorized, requesting withdrawal with verification...');
+          socket.send(JSON.stringify({
             paymentagent_withdraw: 1,
-            amount: amount,
+            amount: parseFloat(amount.toFixed(2)),
             currency: 'USD',
-            verification_code: verificationCode,
+            paymentagent_loginid: process.env.DERIV_PAYMENT_AGENT_ACCOUNT,
+            verification_code: verificationCode, // ← The code from email
+            dry_run: 0,
           }));
-          return;
         }
 
+        // Handle withdrawal response
         if (response.paymentagent_withdraw) {
           clearTimeout(timeout);
-          ws.close();
+          socket.close();
 
-          if (response.paymentagent_withdraw.paymentagent_name) {
-             console.log('✅ Deriv withdrawal successful');
-             resolve({
-                success: true,
-                transaction_id: response.paymentagent_withdraw.transaction_id,
-             });
+          if (response.paymentagent_withdraw === 2) {
+            // Success!
+            console.log('✅ Withdrawal verified and approved by Deriv!');
+            resolve({ success: true, transaction_id: response.paymentagent_withdraw });
           } else {
-             reject(new Error("Withdrawal failed. The code may be incorrect or expired."));
+            reject(new Error('Withdrawal failed'));
           }
         }
       });
 
-      ws.on('error', (error) => {
+      socket.on('error', (error: any) => {
         clearTimeout(timeout);
-        ws.close();
+        socket.close();
         reject(error);
       });
     });
 
-    // Step 2: Send KES to user's M-Pesa via B2C
-    console.log('💰 Sending KES to M-Pesa:', kesAmount, phone);
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    console.log('✅ Deriv withdrawal successful, sending M-Pesa...');
 
-    const b2cResponse = await fetch(`${appUrl}/api/mpesa/b2c`, {
+    // Now send money via M-Pesa B2C
+    const b2cResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/mpesa/b2c`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -110,54 +112,64 @@ export async function POST(request: NextRequest) {
     if (!b2cData.success) {
       console.error('❌ M-Pesa B2C failed:', b2cData.error);
       
-      await redis.set(`failed_withdrawal:${Date.now()}`, JSON.stringify({
-        account: account,
-        amount,
-        kesAmount,
-        phone,
-        derivTxId: derivResult.transaction_id,
-        error: b2cData.error,
-        timestamp: Date.now(),
-      }), { ex: 86400 * 7 }); // Keep for 7 days
+      // Store failed withdrawal for manual processing
+      await redis.set(
+        `failed_withdrawal:${Date.now()}`,
+        JSON.stringify({
+          account,
+          phone,
+          amount,
+          kesAmount,
+          error: b2cData.error,
+          timestamp: new Date().toISOString(),
+        }),
+        { ex: 86400 * 7 } // Keep for 7 days
+      );
 
-      return NextResponse.json({
-        success: false,
-        error: 'Payment processing failed. Please contact support with reference: ' + derivResult.transaction_id,
-      }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: 'M-Pesa transfer failed. Contact support.' },
+        { status: 500 }
+      );
     }
 
-    // Step 3: Record the transaction in Redis
-    const transactionId = `WTH-${Date.now()}`;
-    const transaction = {
-      id: transactionId,
+    console.log('✅ Withdrawal complete!');
+
+    // Store withdrawal transaction
+    const withdrawalTx = {
+      id: `withdrawal_${Date.now()}`,
       type: 'withdrawal',
-      kesAmount,
+      account: account,
       usdAmount: amount,
-      mpesaReceipt: b2cData.conversationId, 
-      derivAccount: account,
-      phoneNumber: phone,
-      transactionId: derivResult.transaction_id,
-      timestamp: Date.now(),
-      status: 'processing', // Will be updated by b2c-result callback
+      kesAmount: kesAmount,
+      phone: phone,
+      status: 'completed',
+      timestamp: new Date().toISOString(),
+      mpesaReceipt: b2cData.conversationId,
     };
 
-    await redis.set(`transaction:${transactionId}`, JSON.stringify(transaction));
-    await redis.lpush(`user_transactions:${account}`, transactionId);
+    await redis.set(
+      `transaction:withdrawal:${Date.now()}`,
+      JSON.stringify(withdrawalTx),
+      { ex: 86400 * 90 }
+    );
 
-    console.log('💾 Withdrawal transaction saved:', transactionId);
-    console.log('✅ Withdrawal complete!');
+    // Add to user transactions
+    const userTxKey = `user_transactions:${account}`;
+    const existingTxs = await redis.get(userTxKey) || '[]';
+    const txArray = JSON.parse(existingTxs as string);
+    txArray.unshift(withdrawalTx);
+    await redis.set(userTxKey, JSON.stringify(txArray.slice(0, 100)));
 
     return NextResponse.json({
       success: true,
       message: 'Withdrawal successful',
-      kesAmount,
-      phone,
+      transaction: withdrawalTx,
     });
 
   } catch (error: any) {
     console.error('❌ Withdrawal process error:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error.message || 'Withdrawal failed' },
       { status: 500 }
     );
   }
