@@ -89,10 +89,8 @@ export default function LoginPage() {
         
         console.log('🚀 Redirecting to dashboard...');
         
-        // Wait a moment to ensure state is set
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
+
       } else {
         console.log('❌ Password incorrect');
         setError('Wrong password. Please try again.');
