@@ -114,7 +114,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-xl">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex items-center justify-center shadow-xl">
               <span className="text-4xl font-black text-primary-foreground">A</span>
             </div>
           </div>
@@ -177,7 +177,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading || !password}
-                className="w-full h-14 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground rounded-xl font-semibold text-lg shadow-lg transition-all flex items-center justify-center"
+                className="w-full h-14 bg-gradient-to-r from-[#3B5998] to-[#2d4373] disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground rounded-xl font-semibold text-lg shadow-lg transition-all flex items-center justify-center"
               >
                 {isLoading ? <Loader2 className="w-6 h-6 animate-spin"/> : 'Login'}
               </button>
@@ -207,7 +207,7 @@ export default function LoginPage() {
             
             <a
               href={authUrl}
-              className="block w-full h-14 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl font-semibold text-lg shadow-lg transition-all flex items-center justify-center"
+              className="block w-full h-14 bg-gradient-to-r from-red-600 to-red-500 text-destructive-foreground rounded-xl font-semibold text-lg shadow-lg transition-all flex items-center justify-center"
             >
               Login with Deriv
             </a>
