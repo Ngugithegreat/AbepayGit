@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { verifyPassword } from '@/lib/security';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,26 +55,51 @@ export default function LoginPage() {
     setError('');
     
     try {
+      console.log('🔐 Login attempt started');
+      
       const storedHash = localStorage.getItem('user_password');
       
       if (!storedHash) {
-          setError("No account found. Please register first.");
-          setIsLoading(false);
-          return;
+        console.log('❌ No stored password found');
+        setError("No account found. Please register first.");
+        setIsLoading(false);
+        return;
       }
 
-      const isValid = await verifyPassword(password, storedHash);
+      console.log('🔑 Stored hash found:', storedHash.substring(0, 20) + '...');
       
-      if (isValid) {
-        console.log('✅ LOGIN: Password correct! Redirecting to dashboard...');
-        // The AuthProvider will pick up the localStorage change on the next page load.
+      // Simple hash function (same as create-password uses)
+      const hashPassword = async (pwd: string) => {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(pwd);
+        const hash = await crypto.subtle.digest('SHA-256', data);
+        return Array.from(new Uint8Array(hash))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+      };
+
+      const enteredHash = await hashPassword(password);
+      console.log('🔑 Entered hash:', enteredHash.substring(0, 20) + '...');
+      
+      if (enteredHash === storedHash) {
+        console.log('✅ Password correct!');
+        console.log('📍 Verifying localStorage before redirect:');
+        console.log('   deriv_loginid:', localStorage.getItem('deriv_loginid'));
+        console.log('   user_has_password:', localStorage.getItem('user_has_password'));
+        
+        console.log('🚀 Redirecting to dashboard...');
+        
+        // Wait a moment to ensure state is set
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         router.push('/dashboard');
       } else {
+        console.log('❌ Password incorrect');
         setError('Wrong password. Please try again.');
         setIsLoading(false);
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('💥 Login error:', error);
       setError('Login failed. Please try again.');
       setIsLoading(false);
     }
