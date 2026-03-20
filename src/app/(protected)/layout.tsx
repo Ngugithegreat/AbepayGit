@@ -1,36 +1,37 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/auth-context';
 import { AppLayout } from '@/components/app-layout';
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
   const router = useRouter();
+  const [isChecked, setIsChecked] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // This effect runs whenever the authentication state changes.
-    console.log('--- ProtectedLayout Guard ---');
-    console.log(`[Guard] isLoading: ${isLoading}`);
-    console.log(`[Guard] user: ${user ? user.loginid : 'null'}`);
+    // Check auth ONLY ONCE when layout mounts
+    console.log('🔒 Protected Layout: Checking auth...');
+    
+    const loginid = localStorage.getItem('deriv_loginid');
+    const hasPassword = localStorage.getItem('user_has_password');
 
-    // Wait until the initial auth check is complete.
-    if (!isLoading) {
-      // If the check is done and there's still no user, redirect to login.
-      if (!user) {
-        console.log('[Guard] ❌ Not authenticated. Redirecting to /login.');
-        router.replace('/login');
-      } else {
-        console.log('[Guard] ✅ Authenticated. Allowing access.');
-      }
+    console.log('   loginid:', loginid);
+    console.log('   hasPassword:', hasPassword);
+
+    if (loginid && hasPassword === 'true') {
+      console.log('✅ Authenticated - allowing access');
+      setIsAuthenticated(true);
+    } else {
+      console.log('❌ Not authenticated - redirecting to login');
+      router.replace('/login');
     }
-    console.log('---------------------------');
-  }, [user, isLoading, router]);
 
-  // While the AuthProvider is checking the session, show a full-page loader.
-  // This prevents any content from flashing before the auth state is confirmed.
-  if (isLoading) {
+    setIsChecked(true);
+  }, [router]); // Re-added router to dependency array to follow React hook linting rules, but the logic remains sound.
+
+  // Show loading while checking
+  if (!isChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -38,12 +39,11 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // If the user is authenticated, render the main app layout with the page content.
-  // The useEffect above handles the redirect, so we only render if `user` is truthy.
-  if (user) {
-    return <AppLayout>{children}</AppLayout>;
+  // If not authenticated, show nothing (redirecting)
+  if (!isAuthenticated) {
+    return null;
   }
 
-  // Render nothing while the redirect is in progress to avoid content flashes.
-  return null;
+  // Authenticated - show the app!
+  return <AppLayout>{children}</AppLayout>;
 }
