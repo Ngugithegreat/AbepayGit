@@ -51,6 +51,13 @@ export default function LoginPage() {
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent multiple rapid submissions
+    if (isLoading) {
+      console.log('⏸️ Already logging in, ignoring...');
+      return;
+    }
+    
     setIsLoading(true);
     setError('');
     
