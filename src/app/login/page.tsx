@@ -63,14 +63,9 @@ export default function LoginPage() {
       
       if (isValid) {
         console.log('✅ Password correct!');
-        
-        // Wait 1 second to ensure localStorage is saved
-        setTimeout(() => {
-          console.log('🚀 Redirecting now...');
-          router.push('/dashboard');
-        }, 1000);
+        router.push('/dashboard');
       } else {
-        alert('Wrong password');
+        setError('Wrong password. Please try again.');
         setIsLoading(false);
       }
     } catch (error) {
