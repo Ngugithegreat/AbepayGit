@@ -36,9 +36,17 @@ export default function LoginPage() {
     const hasPassword = localStorage.getItem('user_has_password');
     
     if (userInfo && hasPassword === 'true') {
-      const user = JSON.parse(userInfo);
-      setEmail(user.email);
-      setHasAccount(true);
+      try {
+        const user = JSON.parse(userInfo);
+        setEmail(user.email);
+        setHasAccount(true);
+      } catch(e) {
+        console.error("Failed to parse user info from localStorage", e);
+        // Clear broken data
+        localStorage.clear();
+        sessionStorage.clear();
+        setHasAccount(false);
+      }
     }
   }, []);
 
