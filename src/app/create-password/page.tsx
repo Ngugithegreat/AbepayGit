@@ -113,7 +113,7 @@ export default function CreatePasswordPage() {
       console.log('✅ Account setup complete!');
 
       // Instead of going to login, go straight to dashboard
-      router.push('/dashboard');
+      window.location.href = '/dashboard';
     } catch (error: any) {
       console.error('Setup error:', error);
       setError(error.message || 'Failed to complete setup');

@@ -10,8 +10,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Delay to ensure localStorage is ready
-    const timer = setTimeout(() => {
+    // Wait a bit for localStorage to be ready
+    const checkAuth = () => {
       console.log('🔒 Protected Layout: Checking auth...');
       
       const loginid = localStorage.getItem('deriv_loginid');
@@ -21,20 +21,20 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       console.log('   hasPassword:', hasPassword);
 
       if (loginid && hasPassword === 'true') {
-        console.log('✅ Authenticated - allowing access');
+        console.log('✅ Authenticated');
         setIsAuthenticated(true);
       } else {
-        console.log('❌ Not authenticated - redirecting to login');
-        router.replace('/login');
+        console.log('❌ Not authenticated, redirecting...');
+        window.location.href = '/login';
       }
 
       setIsChecked(true);
-    }, 200); // 200ms delay
+    };
 
-    return () => clearTimeout(timer);
-  }, [router]);
+    // Delay check to ensure localStorage is ready
+    setTimeout(checkAuth, 300);
+  }, []);
 
-  // Show loading while checking
   if (!isChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -43,11 +43,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // If not authenticated, show nothing (redirecting)
   if (!isAuthenticated) {
     return null;
   }
 
-  // Authenticated - show the app!
   return <AppLayout>{children}</AppLayout>;
 }
