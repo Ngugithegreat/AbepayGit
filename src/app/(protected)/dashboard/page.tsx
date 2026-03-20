@@ -6,7 +6,7 @@ import { ArrowUpRight, ArrowDownLeft, TrendingUp, History, Eye, EyeOff, Loader2,
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [isReady, setIsReady] = useState(false);
+  // isReady state is no longer needed, the layout handles the auth check.
 
   // States for the dashboard itself
   const [showBalance, setShowBalance] = useState(true);
@@ -18,23 +18,16 @@ export default function DashboardPage() {
   const [displayUser, setDisplayUser] = useState({ name: 'User', loginid: '' });
   
   useEffect(() => {
-    // Check auth when component mounts
+    // The layout component now handles auth. This just loads page-specific data.
     const loginid = localStorage.getItem('deriv_loginid');
-    const hasPassword = localStorage.getItem('user_has_password');
-
-    console.log('🏠 Dashboard: Checking auth');
-    console.log('   loginid:', loginid);
-    console.log('   hasPassword:', hasPassword);
-
-    if (!loginid || hasPassword !== 'true') {
-      console.log('❌ Not logged in, redirecting...');
-      router.replace('/login');
-    } else {
-      console.log('✅ Logged in, loading dashboard');
+    if (loginid) {
+      console.log('🏠 Dashboard: Loading data for user:', loginid);
       loadDashboardData(loginid);
-      setIsReady(true);
+    } else {
+      // This case should not happen if the layout guard is working, but it's good practice to log.
+      console.error('🏠 Dashboard: Could not find loginid in localStorage.');
     }
-  }, [router]);
+  }, []);
 
   const loadDashboardData = async (loginid: string) => {
       setIsBalanceLoading(true);
@@ -115,13 +108,8 @@ export default function DashboardPage() {
     }
   };
 
-  if (!isReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  // No need for the isReady loader, the layout handles it.
+  // The page will only render once authentication is confirmed.
 
   return (
     <div className="slide-in">

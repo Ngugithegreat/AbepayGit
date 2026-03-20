@@ -23,22 +23,14 @@ const getTypeIcon = (type: string) => {
 
 export default function HistoryPage() {
   const router = useRouter();
-  const [isReady, setIsReady] = useState(false);
+  // isReady is no longer needed, the layout handles auth.
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check auth when component mounts
-    const loginid = localStorage.getItem('deriv_loginid');
-    const hasPassword = localStorage.getItem('user_has_password');
-
-    if (!loginid || hasPassword !== 'true') {
-      router.replace('/login');
-    } else {
-      fetchTransactions();
-      setIsReady(true);
-    }
-  }, [router]);
+    // Auth is handled by the layout. This page just loads its data.
+    fetchTransactions();
+  }, []);
   
   const fetchTransactions = async () => {
     setIsLoading(true);
@@ -54,14 +46,6 @@ export default function HistoryPage() {
       setIsLoading(false);
     }
   };
-
-  if (!isReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   return (
       <div className="slide-in">

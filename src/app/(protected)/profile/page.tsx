@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [isReady, setIsReady] = useState(false);
+  // isReady state is no longer needed, the layout handles auth.
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [userInfo, setUserInfo] = useState({
@@ -17,26 +17,17 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    // Check auth when component mounts
-    const loginid = localStorage.getItem('deriv_loginid');
-    const hasPassword = localStorage.getItem('user_has_password');
-
-    if (!loginid || hasPassword !== 'true') {
-      router.replace('/login');
-    } else {
-      loadProfileData();
-      setIsReady(true);
-    }
-  }, [router]);
+    // Auth is handled by the layout. This page just loads its data.
+    loadProfileData();
+  }, []);
 
   const loadProfileData = () => {
     const userInfoStr = localStorage.getItem('user_info');
     const loginid = localStorage.getItem('deriv_loginid');
     const mpesaPhone = localStorage.getItem('mpesa_phone');
 
-    console.log('👤 Profile - userInfo:', userInfoStr);
-    console.log('👤 Profile - loginid:', loginid);
-
+    console.log('👤 Profile - Loading data...');
+    
     if (userInfoStr) {
       try {
         const info = JSON.parse(userInfoStr);
@@ -60,14 +51,6 @@ export default function ProfilePage() {
         toast({ title: "Profile Updated", description: "Your changes have been saved." });
         setIsSaving(false);
     }, 1500)
-  }
-
-  if (!isReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
   }
 
   return (

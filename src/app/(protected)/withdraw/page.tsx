@@ -8,7 +8,6 @@ import { useToast } from '@/hooks/use-toast';
 export default function WithdrawPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [isReady, setIsReady] = useState(false);
   
   const [step, setStep] = useState<'amount' | 'phone' | 'verify'>('amount');
   const [usdAmount, setUsdAmount] = useState('');
@@ -22,17 +21,12 @@ export default function WithdrawPage() {
   const [derivAccount, setDerivAccount] = useState('');
 
   useEffect(() => {
-    // Check auth when component mounts
+    // Auth is handled by the layout. This page just loads its data.
     const loginid = localStorage.getItem('deriv_loginid');
-    const hasPassword = localStorage.getItem('user_has_password');
-
-    if (!loginid || hasPassword !== 'true') {
-      router.replace('/login');
-    } else {
+    if (loginid) {
       loadWithdrawData(loginid);
-      setIsReady(true);
     }
-  }, [router]);
+  }, []);
 
   const loadWithdrawData = async (loginid: string) => {
     setIsLoading(true);
@@ -187,14 +181,6 @@ export default function WithdrawPage() {
       setIsLoading(false);
     }
   };
-
-  if (!isReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="slide-in">

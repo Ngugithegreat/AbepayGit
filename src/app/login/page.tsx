@@ -46,9 +46,6 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-
-    // Use a short delay to allow UI to update
-    await new Promise(resolve => setTimeout(resolve, 100));
     
     try {
       const storedHash = localStorage.getItem('user_password');
@@ -62,7 +59,8 @@ export default function LoginPage() {
       const isValid = await verifyPassword(password, storedHash);
       
       if (isValid) {
-        console.log('✅ Password correct!');
+        console.log('✅ LOGIN: Password correct! Redirecting to dashboard...');
+        // The AuthProvider will pick up the localStorage change on the next page load.
         router.push('/dashboard');
       } else {
         setError('Wrong password. Please try again.');
