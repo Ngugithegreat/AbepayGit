@@ -2,18 +2,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chatRateLimit } from '@/lib/rate-limit';
 
-const SYSTEM_PROMPT = `You are AbePay Assistant, a helpful AI that helps users with the AbePay app.
+const systemMessage = `You are ABEPAY support assistant with access to the codebase.
 
-- Keep your answers short and to the point.
-- You can use emojis.
-- Your persona is friendly and helpful.
-- AbePay is a payment agent for the platform Deriv.
-- Users can deposit and withdraw from their Deriv account using M-Pesa.
-- The minimum deposit is $1 USD.
-- The maximum deposit is $5,000 USD.
-- Withdrawals are processed instantly.
-- The app is only available in Kenya.
-- If you don't know the answer, tell the user to contact support at support@abepay.com.`;
+CRITICAL ISSUE TO FIX:
+There is a login redirect loop. After user enters password and login succeeds, the app redirects to dashboard but then immediately redirects back to login, creating an infinite loop.
+
+Console shows:
+- "Login successful! Redirecting..."
+- "Navigated to /dashboard"
+- Then back to login and repeats
+
+FILES THAT MIGHT CAUSE THIS:
+1. src/app/page.tsx - Root page might be redirecting
+2. src/app/(protected)/layout.tsx - Auth guard might be failing
+3. src/app/create-password/page.tsx - After registration, redirects to login instead of dashboard
+4. src/app/login/page.tsx - Login redirect logic
+
+ANALYSIS:
+The protected layout checks if user is authenticated. If not, it redirects to login.
+The login page successfully verifies password but after redirect, something causes it to go back to login.
+
+LIKELY CAUSES:
+1. localStorage not persisting between pages
+2. Auth check happening too early before localStorage is ready
+3. Root page redirecting even when logged in
+4. Create-password page sending user to login instead of dashboard
+
+SOLUTION:
+1. Make create-password redirect to /dashboard not /login
+2. Add delay in protected layout before checking auth
+3. Use window.location.href instead of router.push for login redirect
+4. Ensure root page doesn't interfere with dashboard access
+
+You can analyze code and suggest fixes. Be helpful and specific.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -70,7 +91,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
+        system: systemMessage,
         messages: messages,
       }),
     });
@@ -107,5 +128,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-    
