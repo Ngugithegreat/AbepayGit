@@ -83,14 +83,12 @@ export default function LoginPage() {
       
       if (enteredHash === storedHash) {
         console.log('✅ Password correct!');
-        console.log('📍 Verifying localStorage before redirect:');
-        console.log('   deriv_loginid:', localStorage.getItem('deriv_loginid'));
-        console.log('   user_has_password:', localStorage.getItem('user_has_password'));
-        
-        console.log('🚀 Redirecting to dashboard...');
-        
+  
+        // Force hard navigation (breaks ALL loops)
         window.location.href = '/dashboard';
-
+        
+        // Prevent any further code execution
+        return;
       } else {
         console.log('❌ Password incorrect');
         setError('Wrong password. Please try again.');
