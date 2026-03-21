@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -41,7 +40,9 @@ export default function WelcomeBackPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center p-6" style={{
+      background: 'linear-gradient(to bottom right, #3B5998, #2d4373)'
+    }}>
       <div className="text-center space-y-8 animate-fade-in">
         <div className="w-24 h-24 rounded-3xl bg-white/20 flex items-center justify-center shadow-2xl mx-auto">
           <span className="text-6xl font-black text-white">A</span>

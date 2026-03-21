@@ -76,7 +76,8 @@ export function Chatbot() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-[#3B5998] to-[#2d4373] hover:from-[#2d4373] hover:to-[#1e2e4f] text-white rounded-full shadow-2xl flex items-center justify-center z-50 transition-all hover:scale-110"
+          className="fixed bottom-6 right-6 w-16 h-16 text-white rounded-full shadow-2xl flex items-center justify-center z-50 transition-all hover:scale-110"
+          style={{ background: 'linear-gradient(to bottom right, #3B5998, #2d4373)' }}
         >
           <MessageCircle className="w-7 h-7" />
         </button>
@@ -86,7 +87,7 @@ export function Chatbot() {
       {isOpen && (
         <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#3B5998] to-[#2d4373] p-4 flex items-center justify-between">
+          <div className="p-4 flex items-center justify-between" style={{ background: 'linear-gradient(to right, #3B5998, #2d4373)'}}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                 <Bot className="w-6 h-6 text-white" />
@@ -114,11 +115,7 @@ export function Chatbot() {
                 }`}
               >
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    msg.role === 'user'
-                      ? 'bg-[#3B5998]'
-                      : 'bg-gray-300'
-                  }`}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-[#3B5998]`}
                 >
                   {msg.role === 'user' ? (
                     <User className="w-5 h-5 text-white" />
@@ -169,7 +166,8 @@ export function Chatbot() {
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
-                className="w-10 h-10 bg-gradient-to-br from-[#3B5998] to-[#2d4373] hover:from-[#2d4373] hover:to-[#1e2e4f] disabled:from-gray-300 disabled:to-gray-300 text-white rounded-xl flex items-center justify-center transition-all"
+                className="w-10 h-10 disabled:from-gray-300 disabled:to-gray-300 text-white rounded-xl flex items-center justify-center transition-all"
+                style={{ background: 'linear-gradient(to bottom right, #3B5998, #2d4373)' }}
               >
                 <Send className="w-5 h-5" />
               </button>

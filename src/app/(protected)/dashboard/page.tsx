@@ -162,7 +162,8 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
           <button
             onClick={() => router.push('/deposit')}
-            className="h-24 bg-gradient-to-br from-[#3B5998] to-[#2d4373] hover:from-[#2d4373] hover:to-[#1e2e4f] rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4"
+            className="h-24 rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4"
+            style={{ background: 'linear-gradient(to bottom right, #3B5998, #2d4373)' }}
           >
             <div className="flex flex-col items-center justify-center gap-2 text-white">
               <ArrowDownLeft className="w-8 h-8" strokeWidth={2.5} />
@@ -172,7 +173,8 @@ export default function DashboardPage() {
 
           <button
             onClick={() => router.push('/withdraw')}
-            className="h-24 bg-gradient-to-br from-[#3B5998] to-[#2d4373] hover:from-[#2d4373] hover:to-[#1e2e4f] rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4"
+            className="h-24 rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4"
+            style={{ background: 'linear-gradient(to bottom right, #3B5998, #2d4373)' }}
           >
             <div className="flex flex-col items-center justify-center gap-2 text-white">
               <ArrowUpRight className="w-8 h-8" strokeWidth={2.5} />

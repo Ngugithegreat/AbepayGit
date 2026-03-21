@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -104,7 +103,9 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex items-center justify-center shadow-xl">
+            <div className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl" style={{
+              background: 'linear-gradient(to bottom right, #3B5998, #2d4373)'
+            }}>
               <span className="text-4xl font-black text-white">A</span>
             </div>
           </div>
@@ -171,7 +172,8 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading || !password}
-                className="w-full h-14 bg-gradient-to-r from-[#3B5998] to-[#2d4373] hover:from-[#2d4373] hover:to-[#1e2e4f] disabled:from-gray-300 disabled:to-gray-300 text-white rounded-xl font-semibold text-lg shadow-lg transition-all"
+                className="w-full h-14 hover:from-[#2d4373] hover:to-[#1e2e4f] disabled:from-gray-300 disabled:to-gray-300 text-white rounded-xl font-semibold text-lg shadow-lg transition-all"
+                style={{ background: 'linear-gradient(to right, #3B5998, #2d4373)' }}
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -217,5 +219,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
