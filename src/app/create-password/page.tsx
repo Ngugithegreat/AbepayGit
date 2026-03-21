@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -107,20 +106,24 @@ export default function CreatePasswordPage() {
   };
 
   if (!userInfo) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-2xl p-8 shadow-xl space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-xl space-y-6">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Password</h2>
-          <p className="text-gray-600 text-sm">Secure your account</p>
+          <h2 className="text-2xl font-bold text-white mb-2">Create Password</h2>
+          <p className="text-white/80 text-sm">Secure your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white/90 mb-2">
               Password
             </label>
             <div className="relative">
@@ -129,13 +132,13 @@ export default function CreatePasswordPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password (min 8 characters)"
-                className="w-full h-14 px-4 pr-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-gray-900"
+                className="w-full h-14 px-4 pr-12 bg-white/10 border-2 border-white/20 rounded-xl text-white placeholder-white/60 focus:border-white focus:outline-none"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -143,7 +146,7 @@ export default function CreatePasswordPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white/90 mb-2">
               Confirm Password
             </label>
             <input
@@ -151,20 +154,20 @@ export default function CreatePasswordPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm password"
-              className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-gray-900"
+              className="w-full h-14 px-4 bg-white/10 border-2 border-white/20 rounded-xl text-white placeholder-white/60 focus:border-white focus:outline-none"
               required
             />
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-              <p className="text-red-600 text-sm">{error}</p>
+            <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-3">
+              <p className="text-red-300 text-sm">{error}</p>
             </div>
           )}
 
           <button
             type="submit"
-            className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-xl font-semibold text-lg shadow-lg"
+            className="w-full h-14 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl font-semibold text-lg shadow-lg"
           >
             Complete Setup
           </button>
