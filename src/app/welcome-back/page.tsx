@@ -1,86 +1,65 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
-
-// Function to extract first name, removing titles
-const getFirstName = (fullName: string): string => {
-  if (!fullName) return '';
-  
-  // Remove titles like Mr, Ms, Mrs, Dr, Prof
-  const name = fullName
-    .replace(/^(Mr\.?|Ms\.?|Mrs\.?|Dr\.?|Prof\.?)\s+/i, '')
-    .trim();
-  
-  // Get the first word
-  const firstName = name.split(' ')[0];
-  
-  return firstName || '';
-};
 
 export default function WelcomeBackPage() {
   const router = useRouter();
-  const [firstName, setFirstName] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [userName, setUserName] = useState('User');
 
   useEffect(() => {
-    const userInfoString = localStorage.getItem('user_info');
-    if (userInfoString) {
-      try {
-        const user = JSON.parse(userInfoString);
-        // Use the new function to get the first name
-        const extractedFirstName = getFirstName(user.name);
-        setFirstName(extractedFirstName);
-      } catch (e) {
-        console.error("Failed to parse user info", e);
-        router.push('/login');
-      }
-    } else {
-      // No user info, go to login
-      router.push('/login');
+    const userInfo = localStorage.getItem('user_info');
+    
+    if (!userInfo) {
+      router.replace('/login');
+      return;
     }
-    setIsLoading(false);
+
+    try {
+      const user = JSON.parse(userInfo);
+      // Extract first name and remove titles
+      let name = user.fullname || user.name || 'User';
+      
+      // Remove titles like Mr, Ms, Mrs
+      name = name.replace(/^(Mr\.?|Ms\.?|Mrs\.?)\s+/i, '');
+      
+      // Get first name only
+      const firstName = name.split(' ')[0];
+      
+      setUserName(firstName);
+    } catch (e) {
+      console.error('Error parsing user info', e);
+    }
+
+    // Redirect to login after 3 seconds
+    const timer = setTimeout(() => {
+      router.push('/login');
+    }, 3000);
+
+    return () => clearTimeout(timer);
   }, [router]);
 
-  const handleLogin = () => {
-    // Just redirect to login page where email is already filled
-    router.push('/login');
-  };
-
-  if (isLoading || !firstName) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-16 h-16 animate-spin text-primary"/>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6 slide-in">
-      <div className="w-full max-w-md text-center space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex items-center justify-center p-6">
+      <div className="text-center space-y-8 animate-fade-in">
+        <div className="w-24 h-24 rounded-3xl bg-white/20 flex items-center justify-center shadow-2xl mx-auto">
+          <span className="text-6xl font-black text-white">A</span>
+        </div>
         
-        <div className="flex justify-center">
-          <div className="w-24 h-24 rounded-3xl bg-primary/10 backdrop-blur-sm flex items-center justify-center shadow-2xl">
-            <span className="text-6xl font-black text-primary">A</span>
-          </div>
+        <div className="space-y-4">
+          <h1 className="text-4xl font-black text-white">
+            Hi, {userName}! 👋
+          </h1>
+          <p className="text-xl text-white/90">Welcome back to ABEPAY</p>
+          <p className="text-white/70">Continue with your session</p>
         </div>
 
-        <div className="space-y-2">
-          {/* Using the cleaned first name here */}
-          <h1 className="text-3xl font-bold text-foreground">Welcome Back, {firstName}!</h1>
-          <p className="text-muted-foreground">Ready to continue your session?</p>
+        <div className="flex justify-center gap-2 pt-8">
+          <div className="w-2 h-2 bg-white rounded-full animate-bounce" />
+          <div className="w-2 h-2 bg-white/80 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+          <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
         </div>
-
-        <Button
-          onClick={handleLogin}
-          size="lg"
-          className="w-full h-14 text-lg"
-        >
-          Login to Your Account
-        </Button>
       </div>
     </div>
   );
