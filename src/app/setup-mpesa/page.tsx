@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -71,36 +70,36 @@ export default function SetupMpesaPage() {
 
   if (!userDetails) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-border border-t-primary rounded-full animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex flex-col items-center justify-center p-6 animate-fade-in">
       <div className="w-full max-w-md space-y-8">
         {/* Icon */}
         <div className="flex justify-center">
-          <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-success to-success/80 flex items-center justify-center shadow-2xl">
-            <Phone className="w-16 h-16 text-success-foreground" strokeWidth={2.5} />
+          <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-2xl">
+            <Phone className="w-16 h-16 text-white" strokeWidth={2.5} />
           </div>
         </div>
 
         {/* Title */}
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">Set Up M-Pesa</h1>
-          <p className="text-muted-foreground text-sm">
+          <h1 className="text-2xl font-bold text-white">Set Up M-Pesa</h1>
+          <p className="text-white/80 text-sm">
             Enter your M-Pesa phone number for withdrawals
           </p>
         </div>
 
         {/* Info */}
-        <div className="glass-effect rounded-2xl p-4 space-y-2 custom-shadow">
-          <p className="text-sm text-muted-foreground">
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-4 space-y-2">
+          <p className="text-sm text-white/80">
             📱 This number will be used to receive withdrawals
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-white/80">
             ✅ Make sure it's registered with M-Pesa
           </p>
         </div>
@@ -108,11 +107,11 @@ export default function SetupMpesaPage() {
         {/* Form */}
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-2">
+            <label className="block text-sm font-medium text-white/80 mb-2">
               M-Pesa Phone Number
             </label>
             <div className="relative">
-              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/70" />
               <input
                 type="tel"
                 value={phone}
@@ -121,17 +120,17 @@ export default function SetupMpesaPage() {
                   setError('');
                 }}
                 placeholder="0712345678"
-                className="w-full h-14 pl-12 pr-4 bg-input border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none"
+                className="w-full h-14 pl-12 pr-4 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/60 focus:border-white focus:outline-none"
               />
             </div>
             {error && (
-              <p className="text-destructive text-sm mt-2">{error}</p>
+              <p className="text-red-400 text-sm mt-2">{error}</p>
             )}
           </div>
 
           <button
             onClick={handleContinue}
-            className="w-full h-14 bg-gradient-to-r from-success to-success/90 hover:from-success/90 hover:to-success/80 text-success-foreground rounded-xl font-semibold text-lg shadow-xl transition-all"
+            className="w-full h-14 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl font-semibold text-lg shadow-xl transition-all"
           >
             Continue
           </button>
