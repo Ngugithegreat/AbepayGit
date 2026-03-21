@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
 
 interface User {
   loginid: string;
@@ -18,37 +18,20 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    try {
-      const userInfoString = localStorage.getItem('user_info');
-      const hasPassword = localStorage.getItem('user_has_password');
-
-      if (userInfoString && hasPassword === 'true') {
-        const userInfo = JSON.parse(userInfoString);
-        if (userInfo && userInfo.loginid) {
-          setUser(userInfo);
-        }
-      }
-    } catch (e) {
-      localStorage.removeItem('user_info');
-      localStorage.removeItem('user_has_password');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
+  // DO NOT check auth here - let pages handle it themselves
   const logout = () => {
     localStorage.clear();
     sessionStorage.clear();
-    setUser(null);
     window.location.href = '/login';
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isLinked: !!user, logout }}>
+    <AuthContext.Provider value={{ 
+      user: null, 
+      isLoading: false, 
+      isLinked: false, // <-- This was the original issue, it needs to check auth!
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );
