@@ -87,7 +87,7 @@ function CallbackContent() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex items-center justify-center">
       <div className="text-center space-y-6">
         {status === 'processing' && (
           <>
@@ -119,7 +119,7 @@ function CallbackContent() {
 export default function AuthCallbackPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex items-center justify-center">
         <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin" />
       </div>
     }>
