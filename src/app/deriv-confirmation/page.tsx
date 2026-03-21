@@ -40,7 +40,7 @@ export default function DerivConfirmationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex flex-col items-center justify-center p-6 animate-fade-in">
+    <div className="min-h-screen bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex items-center justify-center p-6">
       <div className="w-full max-w-md space-y-8">
         {/* Success Icon */}
         <div className="flex justify-center">
