@@ -146,7 +146,7 @@ export default function LoginPage() {
             
             <a
               href={authUrl}
-              className="block w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold text-lg shadow-lg transition-all flex items-center justify-center"
+              className="block w-full h-14 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold text-lg shadow-lg transition-all flex items-center justify-center"
             >
               Login with Deriv
             </a>
