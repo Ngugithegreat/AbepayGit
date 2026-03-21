@@ -1,8 +1,7 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Lock, Shield } from 'lucide-react';
 
 export default function CreatePasswordPage() {
   const router = useRouter();
@@ -47,8 +46,7 @@ export default function CreatePasswordPage() {
       sessionStorage.clear();
       router.push('/login');
     } catch (error) {
-      console.error('Setup error:', error);
-      setError('Failed to complete setup');
+      setError('Failed to complete setup. Please try again.');
     }
   };
 
@@ -62,11 +60,38 @@ export default function CreatePasswordPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="w-full max-w-md glass-effect rounded-2xl p-8 custom-shadow space-y-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-2">Create Password</h2>
-          <p className="text-muted-foreground text-sm">Secure your account</p>
+      <div className="w-full max-w-md space-y-8">
+
+        {/* Glowing Icon */}
+        <div className="flex justify-center">
+          <div className="relative">
+            {/* Outer glow */}
+            <div className="absolute inset-0 rounded-3xl bg-primary/20 blur-2xl scale-150" />
+            {/* Floating dots */}
+            <div className="absolute -top-3 -right-3 w-3 h-3 rounded-full bg-primary/70 animate-pulse" />
+            <div className="absolute -bottom-2 -left-4 w-2 h-2 rounded-full bg-secondary/60 animate-pulse" style={{ animationDelay: '0.5s' }} />
+            <div className="absolute top-1/2 -right-6 w-2 h-2 rounded-full bg-warning/50 animate-pulse" style={{ animationDelay: '1s' }} />
+            <div className="absolute -top-5 left-4 w-1.5 h-1.5 rounded-full bg-white/30 animate-pulse" style={{ animationDelay: '1.5s' }} />
+            {/* Main icon with shield badge */}
+            <div className="relative">
+              <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center shadow-2xl" style={{ boxShadow: '0 0 40px rgba(139, 92, 246, 0.4)' }}>
+                <Lock className="w-14 h-14 text-white" strokeWidth={2.5} />
+              </div>
+              {/* Shield badge */}
+              <div className="absolute -bottom-3 -right-3 w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg border-2 border-background">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Title */}
+        <div className="text-center space-y-2 mt-4">
+          <h1 className="text-2xl font-bold text-foreground">Create Password</h1>
+          <p className="text-muted-foreground text-sm">Please create and confirm your password to continue</p>
+        </div>
+
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-2">Password</label>
@@ -100,7 +125,11 @@ export default function CreatePasswordPage() {
               <p className="text-destructive text-sm">{error}</p>
             </div>
           )}
-          <button type="submit" className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold text-lg shadow-lg transition-all">
+          <button
+            type="submit"
+            className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold text-lg transition-all"
+            style={{ boxShadow: '0 0 20px rgba(139, 92, 246, 0.35)' }}
+          >
             Complete Setup
           </button>
         </form>
