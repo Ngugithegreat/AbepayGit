@@ -124,7 +124,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Balance Card */}
-        <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 rounded-3xl p-8 shadow-2xl mb-8">
+        <div className="gradient-balance rounded-3xl p-8 shadow-2xl mb-8">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-primary-foreground/80 text-sm font-medium">Deriv Balance</span>
@@ -162,8 +162,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
           <button
             onClick={() => router.push('/deposit')}
-            className="h-24 rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4"
-            style={{ background: 'linear-gradient(to bottom right, #3B5998, #2d4373)' }}
+            className="h-24 rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4 gradient-deposit hover:opacity-90"
           >
             <div className="flex flex-col items-center justify-center gap-2 text-white">
               <ArrowDownLeft className="w-8 h-8" strokeWidth={2.5} />
@@ -173,8 +172,7 @@ export default function DashboardPage() {
 
           <button
             onClick={() => router.push('/withdraw')}
-            className="h-24 rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4"
-            style={{ background: 'linear-gradient(to bottom right, #3B5998, #2d4373)' }}
+            className="h-24 rounded-2xl shadow-xl hover:shadow-2xl transition-all p-4 gradient-withdraw hover:opacity-90"
           >
             <div className="flex flex-col items-center justify-center gap-2 text-white">
               <ArrowUpRight className="w-8 h-8" strokeWidth={2.5} />
@@ -198,8 +196,8 @@ export default function DashboardPage() {
                             </div>
                         </div>
                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center">
-                                <History className="w-6 h-6 text-secondary" />
+                            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                                <History className="w-6 h-6 text-accent" />
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Transactions</p>
@@ -222,8 +220,8 @@ export default function DashboardPage() {
                     {transactions.slice(0, 5).map((tx: any) => (
                       <div key={tx.id} className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
                         <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tx.type === 'deposit' ? 'bg-success/10' : 'bg-secondary/10'}`}>
-                                {tx.type === 'deposit' ? <ArrowDownLeft className="w-5 h-5 text-success"/> : <ArrowUpRight className="w-5 h-5 text-secondary"/>}
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tx.type === 'deposit' ? 'bg-success/10' : 'bg-destructive/10'}`}>
+                                {tx.type === 'deposit' ? <ArrowDownLeft className="w-5 h-5 text-success"/> : <ArrowUpRight className="w-5 h-5 text-destructive"/>}
                             </div>
                             <div>
                               <p className="font-semibold text-foreground">${tx.usdAmount.toFixed(2)}</p>

@@ -7,22 +7,22 @@
     --background: 225 40% 13%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 14%;
+    --card: 224 42% 16%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 14%;
+    --popover: 224 42% 16%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 265 89% 60%;
+    --primary: 265 89% 62%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 262 83% 53%;
+    --secondary: 199 89% 48%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 222 47% 18%;
+    --muted: 223 40% 20%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 262 83% 63%;
+    --accent: 168 76% 42%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -34,9 +34,9 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 222 47% 20%;
-    --input: 222 47% 16%;
-    --ring: 262 83% 63%;
+    --border: 223 40% 22%;
+    --input: 223 40% 18%;
+    --ring: 265 89% 62%;
 
     --radius: 0.75rem;
   }
@@ -59,13 +59,43 @@
 
 @layer components {
   .glass-effect {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .custom-shadow {
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 24px rgba(139, 92, 246, 0.35);
+  }
+
+  .glow-success {
+    box-shadow: 0 0 24px rgba(34, 197, 94, 0.3);
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(265, 89%, 62%), hsl(230, 89%, 62%));
+  }
+
+  .gradient-deposit {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  }
+
+  .gradient-withdraw {
+    background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+  }
+
+  .gradient-balance {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed, #9333ea);
   }
 
   .slide-in {
@@ -73,14 +103,8 @@
   }
 
   @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .loader {
@@ -89,8 +113,15 @@
   }
 
   @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
+  }
+
+  .pulse-dot {
+    animation: pulseDot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
   }
 }
