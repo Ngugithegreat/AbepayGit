@@ -14,7 +14,7 @@ export default function Home() {
       const hasPassword = localStorage.getItem('user_has_password');
       
       if (hasPassword === 'true') {
-        // Has account - go to welcome back
+        // Returning user - go to welcome back
         router.replace('/welcome-back');
       } else {
         // New user - go to login
