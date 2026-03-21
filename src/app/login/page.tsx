@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -22,7 +23,7 @@ export default function LoginPage() {
         const url = `https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&redirect_uri=${redirectUri}&scope=read+payments+trade+trading_information&l=EN&brand=deriv`;
         setDerivOAuthUrl(url);
     }
-  }, [DERIV_APP_ID]);
+  }, []);
 
 
   useEffect(() => {
@@ -98,46 +99,44 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-xl" style={{
-              background: 'linear-gradient(to bottom right, #3B5998, #2d4373)'
-            }}>
+            <div className="w-20 h-20 rounded-2xl bg-white/20 flex items-center justify-center shadow-xl">
               <span className="text-4xl font-black text-white">A</span>
             </div>
           </div>
-          <h1 className="text-4xl font-black text-gray-900">ABEPAY</h1>
-          <p className="text-gray-600">Instant Transactions</p>
+          <h1 className="text-4xl font-black text-white">ABEPAY</h1>
+          <p className="text-white/80">Instant Transactions</p>
         </div>
 
         {/* Login Form or OAuth Button */}
         {hasAccount ? (
-          <div className="bg-white rounded-2xl p-8 shadow-xl space-y-6">
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-xl space-y-6 border border-white/20">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-              <p className="text-gray-600 text-sm">Enter your password to continue</p>
+              <h2 className="text-2xl font-bold text-white mb-2">Welcome Back</h2>
+              <p className="text-white/80 text-sm">Enter your password to continue</p>
             </div>
 
             <form onSubmit={handlePasswordLogin} className="space-y-4">
               {/* Email (pre-filled, disabled) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-white/90 mb-2">
                   Email
                 </label>
                 <input
                   type="email"
                   value={email}
                   disabled
-                  className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-900 font-medium"
+                  className="w-full h-14 px-4 border-2 border-white/20 rounded-xl bg-white/10 text-white font-medium placeholder-white/60"
                 />
               </div>
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-white/90 mb-2">
                   Password
                 </label>
                 <div className="relative">
@@ -149,14 +148,14 @@ export default function LoginPage() {
                       setError('');
                     }}
                     placeholder="Enter your password"
-                    className="w-full h-14 px-4 pr-12 border-2 border-gray-200 rounded-xl focus:border-[#3B5998] focus:outline-none text-gray-900"
+                    className="w-full h-14 px-4 pr-12 border-2 border-white/20 rounded-xl bg-white/10 text-white focus:border-white focus:outline-none placeholder-white/60"
                     required
                     disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -164,16 +163,15 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-                  <p className="text-red-600 text-sm">{error}</p>
+                <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-3">
+                  <p className="text-white text-sm">{error}</p>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={isLoading || !password}
-                className="w-full h-14 hover:from-[#2d4373] hover:to-[#1e2e4f] disabled:from-gray-300 disabled:to-gray-300 text-white rounded-xl font-semibold text-lg shadow-lg transition-all"
-                style={{ background: 'linear-gradient(to right, #3B5998, #2d4373)' }}
+                className="w-full h-14 bg-white/90 hover:bg-white text-[#3B5998] disabled:bg-white/40 disabled:text-[#3B5998]/50 rounded-xl font-semibold text-lg shadow-lg transition-all"
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -194,17 +192,17 @@ export default function LoginPage() {
                     window.location.reload();
                   }
                 }}
-                className="w-full text-sm text-[#3B5998] hover:text-[#2d4373] font-medium"
+                className="w-full text-sm text-white/80 hover:text-white font-medium"
               >
                 Use a different account
               </button>
             </form>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl p-8 shadow-xl space-y-6">
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-xl space-y-6 border border-white/20">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Get Started</h2>
-              <p className="text-gray-600 text-sm">Connect with your Deriv account</p>
+              <h2 className="text-2xl font-bold text-white mb-2">Get Started</h2>
+              <p className="text-white/80 text-sm">Connect with your Deriv account</p>
             </div>
             
             <a
