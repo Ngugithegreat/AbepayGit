@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,18 +14,14 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const DERIV_APP_ID = process.env.NEXT_PUBLIC_DERIV_APP_ID || '123981';
-  
-  const [authUrl, setAuthUrl] = useState('');
+  const DERIV_APP_ID = '123981';
+  const [derivOAuthUrl, setDerivOAuthUrl] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const redirectUri = `${window.location.protocol}//${window.location.host}/auth/callback`;
-      const derivAuthUrl = new URL('https://oauth.deriv.com/oauth2/authorize');
-      derivAuthUrl.searchParams.set('app_id', DERIV_APP_ID);
-      derivAuthUrl.searchParams.set('redirect_uri', redirectUri);
-      derivAuthUrl.searchParams.set('scope', 'read+payments+trade+trading_information');
-      setAuthUrl(derivAuthUrl.toString());
+        const redirectUri = `${window.location.protocol}//${window.location.host}/auth/callback`;
+        const url = `https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&redirect_uri=${redirectUri}&scope=read+payments+trade+trading_information&l=EN&brand=deriv`;
+        setDerivOAuthUrl(url);
     }
   }, [DERIV_APP_ID]);
 
@@ -37,11 +34,10 @@ export default function LoginPage() {
     if (userInfo && hasPassword === 'true') {
       try {
         const user = JSON.parse(userInfo);
-        setEmail(user.email);
+        setEmail(user.email || '');
         setHasAccount(true);
       } catch(e) {
-        console.error("Failed to parse user info from localStorage", e);
-        // Clear broken data
+        console.error("Failed to parse user info", e);
         localStorage.clear();
         sessionStorage.clear();
         setHasAccount(false);
@@ -49,10 +45,18 @@ export default function LoginPage() {
     }
   }, []);
 
+  const hashPassword = async (pwd: string) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(pwd);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  };
+
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Prevent multiple rapid submissions
     if (isLoading) {
       console.log('⏸️ Already logging in, ignoring...');
       return;
@@ -73,32 +77,18 @@ export default function LoginPage() {
         return;
       }
 
-      console.log('🔑 Stored hash found:', storedHash.substring(0, 20) + '...');
+      console.log('🔑 Verifying password...');
       
-      // Simple hash function (same as create-password uses)
-      const hashPassword = async (pwd: string) => {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(pwd);
-        const hash = await crypto.subtle.digest('SHA-256', data);
-        return Array.from(new Uint8Array(hash))
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-      };
-
       const enteredHash = await hashPassword(password);
-      console.log('🔑 Entered hash:', enteredHash.substring(0, 20) + '...');
       
       if (enteredHash === storedHash) {
-        console.log('✅ Password correct!');
-  
-        // Force hard navigation (breaks ALL loops)
-        window.location.href = '/dashboard';
+        console.log('✅ Password correct! Redirecting to dashboard...');
         
-        // Prevent any further code execution
-        return;
+        // Use window.location.href for full page reload
+        window.location.href = '/dashboard';
       } else {
         console.log('❌ Password incorrect');
-        setError('Wrong password. Please try again.');
+        setError('Incorrect password. Please try again.');
         setIsLoading(false);
       }
     } catch (error) {
@@ -109,105 +99,115 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#3B5998] to-[#2d4373] flex items-center justify-center shadow-xl">
-              <span className="text-4xl font-black text-primary-foreground">A</span>
+              <span className="text-4xl font-black text-white">A</span>
             </div>
           </div>
-          <h1 className="text-4xl font-black text-foreground">ABEPAY</h1>
-          <p className="text-muted-foreground">Instant Transactions</p>
+          <h1 className="text-4xl font-black text-gray-900">ABEPAY</h1>
+          <p className="text-gray-600">Instant Transactions</p>
         </div>
 
         {/* Login Form or OAuth Button */}
         {hasAccount ? (
-          <div className="glass-effect rounded-2xl p-8 custom-shadow space-y-6">
+          <div className="bg-white rounded-2xl p-8 shadow-xl space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-foreground mb-2">Welcome Back</h2>
-              <p className="text-muted-foreground text-sm">Enter your password to continue</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+              <p className="text-gray-600 text-sm">Enter your password to continue</p>
             </div>
 
             <form onSubmit={handlePasswordLogin} className="space-y-4">
               {/* Email (pre-filled, disabled) */}
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email
                 </label>
                 <input
                   type="email"
                   value={email}
                   disabled
-                  className="w-full h-14 px-4 border border-border rounded-xl bg-input text-foreground font-medium"
+                  className="w-full h-14 px-4 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-900 font-medium"
                 />
               </div>
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Password
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setError('');
+                    }}
                     placeholder="Enter your password"
-                    className="w-full h-14 px-4 pr-12 border border-border bg-input rounded-xl focus:ring-ring focus:border-ring focus:outline-none text-foreground"
+                    className="w-full h-14 px-4 pr-12 border-2 border-gray-200 rounded-xl focus:border-[#3B5998] focus:outline-none text-gray-900"
                     required
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
-              
+
               {error && (
-                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-sm">
-                    {error}
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                  <p className="text-red-600 text-sm">{error}</p>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={isLoading || !password}
-                className="w-full h-14 bg-gradient-to-r from-[#3B5998] to-[#2d4373] disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground rounded-xl font-semibold text-lg shadow-lg transition-all flex items-center justify-center"
+                className="w-full h-14 bg-gradient-to-r from-[#3B5998] to-[#2d4373] hover:from-[#2d4373] hover:to-[#1e2e4f] disabled:from-gray-300 disabled:to-gray-300 text-white rounded-xl font-semibold text-lg shadow-lg transition-all"
               >
-                {isLoading ? <Loader2 className="w-6 h-6 animate-spin"/> : 'Login'}
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Logging in...
+                  </span>
+                ) : (
+                  'Login'
+                )}
               </button>
 
               <button
                 type="button"
                 onClick={() => {
-                  // Clear account and start fresh
-                  if (confirm('This will log you out. Are you sure?')) {
+                  if (confirm('This will log you out. Continue?')) {
                     localStorage.clear();
                     sessionStorage.clear();
                     window.location.reload();
                   }
                 }}
-                className="w-full text-sm text-primary hover:text-primary/80 font-medium"
+                className="w-full text-sm text-[#3B5998] hover:text-[#2d4373] font-medium"
               >
                 Use a different account
               </button>
             </form>
           </div>
         ) : (
-          <div className="glass-effect rounded-2xl p-8 custom-shadow space-y-6">
+          <div className="bg-white rounded-2xl p-8 shadow-xl space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-foreground mb-2">Get Started</h2>
-              <p className="text-muted-foreground text-sm">Connect with your Deriv account</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Get Started</h2>
+              <p className="text-gray-600 text-sm">Connect with your Deriv account</p>
             </div>
             
             <a
-              href={authUrl}
-              className="block w-full h-14 bg-gradient-to-r from-red-600 to-red-500 text-destructive-foreground rounded-xl font-semibold text-lg shadow-lg transition-all flex items-center justify-center"
+              href={derivOAuthUrl}
+              className="block w-full h-14 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white rounded-xl font-semibold text-lg shadow-lg transition-all flex items-center justify-center"
             >
               Login with Deriv
             </a>
@@ -217,3 +217,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
