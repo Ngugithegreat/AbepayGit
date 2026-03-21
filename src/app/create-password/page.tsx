@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -95,10 +96,9 @@ export default function CreatePasswordPage() {
       sessionStorage.clear();
 
       console.log('✅ Account setup complete!');
-      console.log('🚀 Redirecting to dashboard...');
 
-      // CRITICAL: Use window.location.href for full page reload
-      window.location.href = '/dashboard';
+      // Redirect to LOGIN page so user can enter their new password
+      router.push('/login');
 
     } catch (error) {
       console.error('Setup error:', error);
