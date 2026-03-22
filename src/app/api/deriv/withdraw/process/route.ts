@@ -161,11 +161,36 @@ export async function POST(request: NextRequest) {
       { ex: 86400 * 90 }
     );
 
-    const userTxKey = `user_transactions:${account}`;
-    const existingTxs = await redis.get(userTxKey) || '[]';
-    const txArray = JSON.parse(existingTxs as string);
-    txArray.unshift(withdrawalTx);
-    await redis.set(userTxKey, JSON.stringify(txArray.slice(0, 100)));
+    // Store transaction with better error handling
+    try {
+      const userTxKey = `user_transactions:${account}`;
+      
+      // Try to get existing transactions
+      let txArray = [];
+      try {
+        const existingTxs = await redis.get(userTxKey);
+        if (existingTxs && typeof existingTxs === 'string') {
+          txArray = JSON.parse(existingTxs);
+        } else if (Array.isArray(existingTxs)) {
+          txArray = existingTxs;
+        }
+      } catch (e) {
+        console.log('⚠️ Could not parse existing transactions, starting fresh');
+        // Delete the corrupted key
+        await redis.del(userTxKey);
+        txArray = [];
+      }
+      
+      // Add new transaction
+      txArray.unshift(withdrawalTx);
+      
+      // Save back to Redis
+      await redis.set(userTxKey, JSON.stringify(txArray.slice(0, 100)));
+      console.log('✅ Transaction saved to user history');
+    } catch (storageError) {
+      console.error('⚠️ Failed to save to transaction history:', storageError);
+      // Don't fail the whole withdrawal for this
+    }
 
     return NextResponse.json({
       success: true,
