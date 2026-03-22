@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate amount
     if (amount < 1 || amount > 2000) {
       return NextResponse.json(
         { success: false, error: 'Amount must be between $1 and $2,000' },
@@ -30,32 +29,29 @@ export async function POST(request: NextRequest) {
       token: process.env.UPSTASH_REDIS_REST_TOKEN!,
     });
 
-    // Get user's OAuth token
     const userToken = await redis.get(`user_token:${account}`);
     
     if (!userToken) {
-      console.log('❌ User token not found for account:', account);
+      console.log('❌ User token not found');
       return NextResponse.json(
         { success: false, error: 'User token not found. Please log in again.' },
         { status: 400 }
       );
     }
 
-    console.log('✅ User token found, connecting to Deriv...');
+    console.log('✅ User token found, requesting verification email...');
 
-    // Use dynamic import for ws
     const ws = await import('ws');
     const socket = new ws.WebSocket('wss://ws.derivws.com/websockets/v3?app_id=123981');
 
     const result = await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         socket.close();
-        reject(new Error('Verification request timeout'));
-      }, 30000); // 30 second timeout
+        reject(new Error('Request timeout'));
+      }, 30000);
 
       socket.on('open', () => {
-        console.log('🔌 Connected to Deriv WebSocket');
-        // First, authorize
+        console.log('🔌 Connected to Deriv');
         socket.send(JSON.stringify({
           authorize: userToken,
         }));
@@ -73,38 +69,26 @@ export async function POST(request: NextRequest) {
           return;
         }
 
-        // After authorization, request withdrawal verification
         if (response.authorize) {
-          console.log('✅ Authorized, requesting withdrawal verification...');
+          console.log('✅ Authorized, requesting verification email...');
           
-          // Request paymentagent_withdraw to trigger verification email
+          // Request verification email for paymentagent_withdraw
           socket.send(JSON.stringify({
-            paymentagent_withdraw: 1,
-            amount: parseFloat(amount.toFixed(2)),
-            currency: 'USD',
-            paymentagent_loginid: process.env.DERIV_PAYMENT_AGENT_ACCOUNT,
-            dry_run: 0, // Set to 0 to actually trigger the email
+            verify_email: response.authorize.email,
+            type: 'paymentagent_withdraw',
           }));
         }
 
-        // Handle withdrawal response
-        if (response.paymentagent_withdraw !== undefined) {
+        if (response.verify_email) {
           clearTimeout(timeout);
           socket.close();
-
-          // Check if verification is required
-          if (response.paymentagent_withdraw === 2) {
-            // Success without verification
-            console.log('✅ Withdrawal approved without verification');
-            resolve({ success: true, requiresVerification: false });
-          } else if (response.error && response.error.code === 'PaymentAgentWithdrawError') {
-            // This error means verification email was sent
-            console.log('✅ Verification email sent by Deriv');
-            resolve({ success: true, requiresVerification: true });
+          
+          if (response.verify_email === 1) {
+            console.log('✅ Verification email sent successfully!');
+            resolve({ success: true });
           } else {
-            // Some other response
-            console.log('⚠️ Unexpected response:', response);
-            resolve({ success: true, requiresVerification: true });
+            console.log('⚠️ Unexpected verify_email response:', response);
+            resolve({ success: true });
           }
         }
       });
@@ -117,7 +101,7 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    console.log('✅ Withdrawal verification email sent');
+    console.log('✅ Verification email request completed');
 
     return NextResponse.json({
       success: true,
@@ -127,7 +111,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('❌ Withdrawal initiate error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to initiate withdrawal' },
+      { success: false, error: error.message || 'Failed to send verification email' },
       { status: 500 }
     );
   }
