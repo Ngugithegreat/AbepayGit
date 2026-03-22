@@ -65,7 +65,7 @@ export default function DashboardPage() {
   
       // Fetch transactions
       try {
-        const txResponse = await fetch(`/api/transactions`); 
+        const txResponse = await fetch(`/api/transactions?account=${loginid}`); 
         const txData = await txResponse.json();
         if (txData.success) {
           setTransactions(txData.transactions);

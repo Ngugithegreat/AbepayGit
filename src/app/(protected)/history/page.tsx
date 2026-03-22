@@ -35,7 +35,13 @@ export default function HistoryPage() {
   const fetchTransactions = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/transactions`);
+      const loginid = localStorage.getItem('deriv_loginid');
+      if (!loginid) {
+          setTransactions([]);
+          setIsLoading(false);
+          return;
+      }
+      const response = await fetch(`/api/transactions?account=${loginid}`);
       const data = await response.json();
       if (data.success) {
         setTransactions(data.transactions);
