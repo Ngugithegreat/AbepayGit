@@ -57,14 +57,6 @@ export async function POST(request: NextRequest) {
         const response = JSON.parse(data.toString());
         console.log('📨 Deriv response:', JSON.stringify(response, null, 2));
 
-        if (response.error) {
-          clearTimeout(timeout);
-          socket.close();
-          console.log('❌ Deriv error:', response.error.message);
-          reject(new Error(response.error.message));
-          return;
-        }
-
         if (response.authorize) {
           console.log('✅ Authorized, submitting withdrawal with verification code...');
           socket.send(JSON.stringify({
@@ -75,19 +67,32 @@ export async function POST(request: NextRequest) {
             verification_code: verificationCode,
             dry_run: 0,
           }));
-        }
-
-        if (response.paymentagent_withdraw !== undefined) {
+        } else if (response.paymentagent_withdraw !== undefined) {
           clearTimeout(timeout);
           socket.close();
 
-          if (response.paymentagent_withdraw === 2) {
+          // Check if it's a success (paymentagent_withdraw: 1 and has transaction_id)
+          if (response.paymentagent_withdraw === 1 && response.transaction_id) {
             console.log('✅ Withdrawal verified and approved by Deriv!');
-            resolve({ success: true });
+            console.log('Transaction ID:', response.transaction_id);
+            resolve({ 
+              success: true, 
+              transaction_id: response.transaction_id,
+              paymentagent_name: response.paymentagent_name 
+            });
+          } else if (response.error) {
+            console.log('❌ Withdrawal error:', response.error);
+            reject(new Error(response.error.message));
           } else {
             console.log('❌ Withdrawal failed:', response);
             reject(new Error('Withdrawal verification failed'));
           }
+        } else if (response.error) {
+          clearTimeout(timeout);
+          socket.close();
+          console.log('❌ Deriv error:', response.error.message);
+          reject(new Error(response.error.message));
+          return;
         }
       });
 
